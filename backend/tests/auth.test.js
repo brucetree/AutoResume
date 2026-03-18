@@ -1,6 +1,6 @@
 const request = require('supertest')
 const mongoose = require('mongoose')
-const { app, server } = require('../src/index')
+const app = require('../src/app')
 const User = require('../src/models/User')
 
 const MONGO_URI = process.env.MONGO_URI_TEST || 'mongodb://admin:password@localhost:27017/autoresume_test?authSource=admin'
@@ -12,7 +12,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await mongoose.connection.dropDatabase()
   await mongoose.disconnect()
-  server.close()
 })
 
 beforeEach(async () => {
@@ -80,6 +79,7 @@ describe('POST /api/auth/login', () => {
     })
     expect(res.status).toBe(200)
     expect(res.body.user.email).toBe('test@example.com')
+    expect(res.body.token).toBeDefined()
   })
 
   it('rejects wrong password', async () => {
