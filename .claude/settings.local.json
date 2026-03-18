@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx:*)",
+      "Read(//Users/brucetree/.nvm/versions/**)",
+      "Bash(nvm ls:*)",
+      "Read(//opt/homebrew/**)",
+      "Bash(brew list:*)",
+      "Bash(ls:*)",
+      "Bash(which brew:*)",
+      "Bash(brew install:*)",
+      "Bash(export:*)",
+      "Bash(which sh:*)",
+      "Bash(cd:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}
