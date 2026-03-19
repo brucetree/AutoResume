@@ -24,7 +24,8 @@ async function analyzeAndModify(resumeText, jobDescription) {
 列出简历与职位要求之间的主要差距，格式为清晰的要点列表。
 
 ## 任务2：优化后的简历
-根据职位要求，优化简历内容。保留原有真实经历，重新组织语言以更好匹配职位要求。以 Markdown 格式输出完整的优化简历。
+根据职位要求，优化简历内容。保留原有真实经历，重新组织语言以更好匹配职位要求。以 HTML 格式输出完整的优化简历。
+使用语义化 HTML 标签：<h1> 用于姓名，<h2> 用于板块标题，<h3> 用于子标题，<p> 用于正文段落，<ul>/<li> 用于列表，<strong> 用于加粗，<em> 用于斜体。不要包含 <html>、<head>、<body> 等外层标签，只输出简历正文的 HTML 片段。
 
 ---
 
@@ -41,7 +42,7 @@ ${jobDescription}
 请按如下 JSON 格式返回（不要包含 markdown 代码块标记）：
 {
   "gapAnalysis": "差距分析内容（用\\n分隔要点）",
-  "modifiedResume": "优化后的完整简历（Markdown格式）"
+  "modifiedResume": "优化后的完整简历（HTML片段格式）"
 }`
 
   const result = await model.generateContent(prompt)

@@ -8,14 +8,15 @@ if (!fs.existsSync(outputDir)) {
 }
 
 /**
- * Convert markdown resume content to a downloadable PDF.
- * @param {string} markdownContent - the resume in markdown format
+ * Convert resume content (HTML or markdown) to a downloadable PDF.
+ * @param {string} content - the resume in HTML or markdown format
  * @param {string} fileName - output file name (without extension)
  * @returns {Promise<string>} absolute path to the generated PDF
  */
-async function generatePdf(markdownContent, fileName) {
-  // Simple markdown-to-HTML conversion for key elements
-  const html = markdownToHtml(markdownContent)
+async function generatePdf(content, fileName) {
+  // If content contains HTML tags, use it directly; otherwise convert from markdown
+  const isHtml = /<[a-z][\s\S]*>/i.test(content)
+  const html = isHtml ? content : markdownToHtml(content)
 
   const fullHtml = `<!DOCTYPE html>
 <html lang="zh-CN">

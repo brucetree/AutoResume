@@ -6,9 +6,6 @@ import { useEffect, useRef, useState } from 'react'
 import { apiUpload, apiPost } from '@/lib/api'
 
 interface AnalyzeResult {
-  modifiedResumeId: string
-  gapAnalysis: string
-  modifiedContent: string
   application: { _id: string }
 }
 
@@ -22,9 +19,8 @@ export default function UploadPage() {
   const [position, setPosition] = useState('')
   const [jobInput, setJobInput] = useState('')
   const [jobInputType, setJobInputType] = useState<'text' | 'url'>('text')
-  const [step, setStep] = useState<'upload' | 'analyzing' | 'done'>('upload')
+  const [step, setStep] = useState<'upload' | 'analyzing'>('upload')
   const [error, setError] = useState('')
-  const [result, setResult] = useState<AnalyzeResult | null>(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login')
@@ -58,8 +54,7 @@ export default function UploadPage() {
       }
 
       const data = await apiPost<AnalyzeResult>('/api/jobs/analyze', body)
-      setResult(data)
-      setStep('done')
+      router.push(`/resume/${data.application._id}/edit`)
     } catch (err) {
       setError('分析失败，请重试')
       setStep('upload')
@@ -71,38 +66,6 @@ export default function UploadPage() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent" />
         <p className="text-gray-600">AI 正在分析简历，请稍候...</p>
-      </div>
-    )
-  }
-
-  if (step === 'done' && result) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-10 px-4">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold text-gray-800">分析完成</h2>
-
-          <div className="bg-white rounded-xl shadow p-6">
-            <h3 className="font-semibold text-gray-700 mb-3">差距分析</h3>
-            <pre className="whitespace-pre-wrap text-sm text-gray-600 leading-relaxed">
-              {result.gapAnalysis}
-            </pre>
-          </div>
-
-          <div className="flex gap-4">
-            <button
-              onClick={() => router.push(`/resume/${result.modifiedResumeId}/edit`)}
-              className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-            >
-              查看并编辑修改后的简历
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-            >
-              返回投递记录
-            </button>
-          </div>
-        </div>
       </div>
     )
   }

@@ -4,7 +4,8 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { apiGet, apiPatch } from '@/lib/api'
+import { apiGet } from '@/lib/api'
+import UserMenu from '@/components/UserMenu'
 
 interface Application {
   _id: string
@@ -12,7 +13,6 @@ interface Application {
   position: string
   status: string
   createdAt: string
-  modifiedResumeId?: { _id: string }
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -61,7 +61,7 @@ export default function DashboardPage() {
       <nav className="bg-white border-b px-6 py-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-indigo-700">autoResume</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">{session?.user?.name}</span>
+          <UserMenu />
           <Link
             href="/resume/upload"
             className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition"
@@ -107,14 +107,12 @@ export default function DashboardPage() {
                       {new Date(app.createdAt).toLocaleDateString('zh-CN')}
                     </td>
                     <td className="px-6 py-4">
-                      {app.modifiedResumeId && (
-                        <Link
-                          href={`/resume/${app.modifiedResumeId._id}/edit`}
-                          className="text-indigo-600 hover:underline text-sm"
-                        >
-                          查看简历
-                        </Link>
-                      )}
+                      <Link
+                        href={`/resume/${app._id}/edit`}
+                        className="text-indigo-600 hover:underline text-sm"
+                      >
+                        查看简历
+                      </Link>
                     </td>
                   </tr>
                 ))}
