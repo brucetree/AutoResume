@@ -8,3 +8,4 @@ uploads/
 *.pdf
 .DS_Store
 coverage/
+*.log

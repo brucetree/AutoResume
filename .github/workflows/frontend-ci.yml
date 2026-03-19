@@ -18,7 +18,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
@@ -35,5 +35,5 @@ jobs:
         env:
           NEXTAUTH_URL: http://localhost:3000
           NEXTAUTH_SECRET: test-secret
-          NEXT_PUBLIC_API_URL: http://localhost:5000
+          NEXT_PUBLIC_API_URL: http://localhost:5001
         run: npm run build
