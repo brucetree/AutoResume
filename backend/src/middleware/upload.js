@@ -1,14 +1,10 @@
 const multer = require('multer')
 const path = require('path')
-const fs = require('fs')
+const os = require('os')
 
-const uploadDir = path.join(__dirname, '../../uploads')
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true })
-}
-
+// Use OS temp directory — files are temporary, uploaded to S3 after parsing
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
+  destination: (req, file, cb) => cb(null, os.tmpdir()),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname)
     const name = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`

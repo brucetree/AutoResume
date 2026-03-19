@@ -9,3 +9,6 @@ uploads/
 .DS_Store
 coverage/
 *.log
+
+# Docker
+.docker/

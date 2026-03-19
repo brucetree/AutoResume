@@ -1,17 +1,43 @@
 version: '3.8'
 
 services:
-  mongodb:
-    image: mongo:7
-    container_name: autoresume-mongo
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:5001}
+    container_name: autoresume-frontend
     ports:
-      - '27017:27017'
+      - '3000:3000'
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: password
-      MONGO_INITDB_DATABASE: autoresume
-    volumes:
-      - mongo_data:/data/db
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    restart: unless-stopped
 
-volumes:
-  mongo_data:
+  backend:
+    build:
+      context: ./backend
+    container_name: autoresume-backend
+    ports:
+      - '5001:5001'
+    environment:
+      - PORT=5001
+      - MONGO_URI=${MONGO_URI:-mongodb+srv://user:pass@cluster0.xxxxx.mongodb.net/autoresume}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-in-production}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - S3_BUCKET=${S3_BUCKET:-autoresume-files}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    restart: unless-stopped

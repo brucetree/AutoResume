@@ -3,8 +3,7 @@ const authMiddleware = require('../middleware/authMiddleware')
 const Application = require('../models/Application')
 const Resume = require('../models/Resume')
 const { generatePdf } = require('../services/pdfGenerator')
-const path = require('path')
-const fs = require('fs')
+const { getPresignedUrl } = require('../services/s3Service')
 
 const router = express.Router()
 router.use(authMiddleware)
@@ -58,7 +57,7 @@ router.patch('/:id/status', async (req, res) => {
   }
 })
 
-// POST /api/applications/:id/export-pdf — generate and download PDF
+// POST /api/applications/:id/export-pdf — generate PDF and return download URL
 router.post('/:id/export-pdf', async (req, res) => {
   try {
     const app = await Application.findOne({
@@ -71,18 +70,18 @@ router.post('/:id/export-pdf', async (req, res) => {
       return res.status(400).json({ message: '没有修改后的简历内容' })
     }
 
-    const pdfPath = await generatePdf(
+    const s3Key = await generatePdf(
       app.modifiedResumeId.modifiedContent,
       `${app.company}-${app.position}`
     )
 
-    res.download(pdfPath, path.basename(pdfPath), (err) => {
-      if (!err) {
-        // Optionally clean up after download
-        setTimeout(() => {
-          try { fs.unlinkSync(pdfPath) } catch { /* ignore */ }
-        }, 5000)
-      }
+    // Return a presigned download URL (valid for 1 hour)
+    const downloadUrl = await getPresignedUrl(s3Key)
+
+    res.json({
+      message: 'PDF 生成成功',
+      downloadUrl,
+      s3Key,
     })
   } catch (err) {
     console.error('PDF export error:', err)

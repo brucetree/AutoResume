@@ -1,0 +1,7 @@
+node_modules
+uploads
+.env
+coverage
+.DS_Store
+tests
+jest.config.js

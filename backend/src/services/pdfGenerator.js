@@ -1,17 +1,11 @@
 const puppeteer = require('puppeteer')
-const path = require('path')
-const fs = require('fs')
-
-const outputDir = path.join(__dirname, '../../uploads/generated')
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir, { recursive: true })
-}
+const { uploadToS3 } = require('./s3Service')
 
 /**
- * Convert resume content (HTML or markdown) to a downloadable PDF.
+ * Convert resume content (HTML or markdown) to PDF, upload to S3.
  * @param {string} content - the resume in HTML or markdown format
  * @param {string} fileName - output file name (without extension)
- * @returns {Promise<string>} absolute path to the generated PDF
+ * @returns {Promise<string>} S3 key of the generated PDF
  */
 async function generatePdf(content, fileName) {
   // If content contains HTML tags, use it directly; otherwise convert from markdown
@@ -40,21 +34,27 @@ async function generatePdf(content, fileName) {
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
   })
 
   const page = await browser.newPage()
   await page.setContent(fullHtml, { waitUntil: 'networkidle0' })
 
-  const outputPath = path.join(outputDir, `${fileName}-${Date.now()}.pdf`)
-  await page.pdf({
-    path: outputPath,
+  // Generate PDF as buffer (not saving to disk)
+  const pdfBuffer = await page.pdf({
     format: 'A4',
     margin: { top: '20mm', right: '20mm', bottom: '20mm', left: '20mm' },
     printBackground: true,
   })
 
   await browser.close()
-  return outputPath
+
+  // Upload PDF to S3
+  const safeName = fileName.replace(/[^a-zA-Z0-9\u4e00-\u9fff-]/g, '_')
+  const s3Key = `generated/${safeName}-${Date.now()}.pdf`
+  await uploadToS3(pdfBuffer, s3Key, 'application/pdf')
+
+  return s3Key
 }
 
 function markdownToHtml(md) {
