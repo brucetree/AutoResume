@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "Before stopping, perform a quick code review of all changes made in this session. Check for: 1) Logic errors or bugs 2) Missing error handling 3) Security issues (hardcoded secrets, injection risks) 4) Unused imports or dead code. If issues are found, list them clearly. If everything looks good, confirm the changes are clean."
+          }
+        ]
+      }
+    ]
+  }
+}
