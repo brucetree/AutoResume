@@ -131,7 +131,7 @@ jobs:
         run: |
           echo "$EC2_SSH_KEY" > key.pem
           chmod 600 key.pem
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << 'DEPLOY_SCRIPT'
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << DEPLOY_SCRIPT
             cd /home/ec2-user/autoresume
             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
             docker-compose -f docker-compose.prod.yml pull
