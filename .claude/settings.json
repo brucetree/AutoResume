@@ -1,12 +1,12 @@
 {
   "hooks": {
-    "Stop": [
+    "PreToolUse": [
       {
-        "matcher": "",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "prompt",
-            "prompt": "Before stopping, perform a quick code review of all changes made in this session. Check for: 1) Logic errors or bugs 2) Missing error handling 3) Security issues (hardcoded secrets, injection risks) 4) Unused imports or dead code. If issues are found, list them clearly. If everything looks good, confirm the changes are clean."
+            "prompt": "If this Bash command is a 'git commit' command, perform a code review of all staged changes before allowing the commit. Run 'git diff --cached' to see what's being committed, then check for: 1) Logic errors or bugs 2) Missing error handling 3) Security issues (hardcoded secrets, injection risks) 4) Unused imports or dead code 5) Refer to REVIEW.md for project-specific guidelines. If critical issues are found, reject the tool call and explain what needs to be fixed. If everything looks good or only minor issues exist, approve the tool call and note any suggestions. If this is NOT a git commit command, simply approve it."
           }
         ]
       }
