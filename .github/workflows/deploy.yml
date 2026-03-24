@@ -111,30 +111,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy compose file to EC2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup SSH key
         env:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           echo "$EC2_SSH_KEY" > key.pem
           chmod 600 key.pem
+
+      - name: Copy compose file to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
           scp -o StrictHostKeyChecking=no -i key.pem \
             docker-compose.prod.yml \
             ec2-user@$EC2_HOST:/home/ec2-user/autoresume/
 
       - name: Deploy on EC2
         env:
-          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
         run: |
-          echo "$EC2_SSH_KEY" > key.pem
-          chmod 600 key.pem
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << DEPLOY_SCRIPT
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << 'DEPLOY_SCRIPT'
             cd /home/ec2-user/autoresume
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 082499809818.dkr.ecr.ap-southeast-2.amazonaws.com
+            docker-compose -f docker-compose.prod.yml down
             docker-compose -f docker-compose.prod.yml pull
             docker-compose -f docker-compose.prod.yml up -d
             docker image prune -f
           DEPLOY_SCRIPT
+
+      - name: Verify deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          sleep 15
+          curl -f http://$EC2_HOST:5001/health || (echo "Backend health check failed" && exit 1)
+          curl -f http://$EC2_HOST:3000 || (echo "Frontend health check failed" && exit 1)
+          echo "Deployment verified successfully"
