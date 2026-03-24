@@ -1,0 +1,26 @@
+services:
+  backend:
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/autoresume-backend:latest
+    container_name: autoresume-backend
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env.backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/autoresume-frontend:latest
+    container_name: autoresume-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.frontend
+    depends_on:
+      backend:
+        condition: service_healthy

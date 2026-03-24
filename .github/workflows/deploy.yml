@@ -1,0 +1,156 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - 'release/**'
+
+jobs:
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: frontend
+        run: npm test
+
+      - name: Build
+        working-directory: frontend
+        env:
+          NEXTAUTH_URL: http://localhost:3000
+          NEXTAUTH_SECRET: test-secret
+          NEXT_PUBLIC_API_URL: http://localhost:5001
+        run: npm run build
+
+  test-backend:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: password
+        ports:
+          - 27017:27017
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          MONGO_URI_TEST: mongodb://admin:password@localhost:27017/autoresume_test?authSource=admin
+          NEXTAUTH_SECRET: test-secret
+          GEMINI_API_KEY: test-key
+        run: npm test
+
+  build-and-push:
+    needs: [test-frontend, test-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push backend image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          docker build -t $ECR_REGISTRY/autoresume-backend:latest \
+                        -t $ECR_REGISTRY/autoresume-backend:${{ github.sha }} \
+                        ./backend
+          docker push $ECR_REGISTRY/autoresume-backend:latest
+          docker push $ECR_REGISTRY/autoresume-backend:${{ github.sha }}
+
+      - name: Build and push frontend image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+        run: |
+          docker build --build-arg NEXT_PUBLIC_API_URL=http://${{ secrets.EC2_HOST }}:5001 \
+                        -t $ECR_REGISTRY/autoresume-frontend:latest \
+                        -t $ECR_REGISTRY/autoresume-frontend:${{ github.sha }} \
+                        ./frontend
+          docker push $ECR_REGISTRY/autoresume-frontend:latest
+          docker push $ECR_REGISTRY/autoresume-frontend:${{ github.sha }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Setup SSH key
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          echo "$EC2_SSH_KEY" > key.pem
+          chmod 600 key.pem
+
+      - name: Copy compose file to EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          scp -o StrictHostKeyChecking=no -i key.pem \
+            docker-compose.prod.yml \
+            ec2-user@$EC2_HOST:/home/ec2-user/autoresume/
+
+      - name: Deploy on EC2
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << 'DEPLOY_SCRIPT'
+            cd /home/ec2-user/autoresume
+            aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 082499809818.dkr.ecr.ap-southeast-2.amazonaws.com
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml pull
+            docker-compose -f docker-compose.prod.yml up -d
+            docker image prune -f
+          DEPLOY_SCRIPT
+
+      - name: Verify deployment
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          sleep 15
+          curl -f http://$EC2_HOST:5001/health || (echo "Backend health check failed" && exit 1)
+          curl -f http://$EC2_HOST:3000 || (echo "Frontend health check failed" && exit 1)
+          echo "Deployment verified successfully"
