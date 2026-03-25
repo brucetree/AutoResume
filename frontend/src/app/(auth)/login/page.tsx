@@ -40,6 +40,7 @@ function LoginContent() {
 
         <div className="relative z-20 flex flex-col justify-between p-16 w-full">
           <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-2xl">widgets</span>
             <Link href="/" className="text-2xl font-black font-headline tracking-tighter text-primary">
               AutoResume
             </Link>
@@ -62,7 +63,8 @@ function LoginContent() {
       {/* Right Side — Login Form */}
       <section className="flex-1 flex flex-col bg-surface-container-lowest">
         {/* Mobile Header — fixed */}
-        <header className="md:hidden fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl flex items-center px-6 h-16">
+        <header className="md:hidden fixed top-0 w-full z-50 bg-surface-container-lowest/80 backdrop-blur-xl flex items-center gap-2 px-6 h-16">
+          <span className="material-symbols-outlined text-on-surface text-xl">widgets</span>
           <Link href="/" className="text-xl font-extrabold tracking-tighter text-on-surface font-headline">
             AutoResume
           </Link>
