@@ -22,7 +22,7 @@ const fileFilter = (req, file, cb) => {
   if (allowed.includes(ext)) {
     cb(null, true)
   } else {
-    cb(new Error('只支持 PDF 和 Word 文件'), false)
+    cb(new Error('Only PDF and Word files are supported'), false)
   }
 }
 
