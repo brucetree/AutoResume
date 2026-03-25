@@ -62,4 +62,39 @@ ${jobDescription}
   }
 }
 
-module.exports = { analyzeAndModify }
+/**
+ * Parse job posting text and extract structured fields.
+ * Returns: { jobTitle: string, company: string, jobDescription: string }
+ */
+async function parseJobPosting(rawText) {
+  const model = getGenAI().getGenerativeModel({ model: 'gemini-flash-latest' })
+
+  const prompt = `You are a job posting parser. Extract the following fields from the raw job posting text below.
+
+Return a JSON object with exactly these fields:
+- "jobTitle": The job title/position name (string)
+- "company": The company/organization name (string)
+- "jobDescription": The full job description including responsibilities, requirements, qualifications, etc. Clean it up but keep all relevant details. (string)
+
+If a field cannot be determined, use an empty string "".
+
+Do NOT include markdown code block markers. Return only valid JSON.
+
+---
+
+Raw job posting text:
+${rawText.slice(0, 6000)}
+`
+
+  const result = await model.generateContent(prompt)
+  const text = result.response.text().trim()
+  const clean = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+
+  try {
+    return JSON.parse(clean)
+  } catch {
+    return { jobTitle: '', company: '', jobDescription: rawText.slice(0, 3000) }
+  }
+}
+
+module.exports = { analyzeAndModify, parseJobPosting }
