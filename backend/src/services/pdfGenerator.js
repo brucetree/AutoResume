@@ -19,7 +19,7 @@ async function generatePdf(content, fileName) {
   const html = isHtml ? content : markdownToHtml(content)
 
   const fullHtml = `<!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <style>

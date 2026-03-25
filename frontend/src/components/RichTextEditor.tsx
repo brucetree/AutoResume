@@ -31,10 +31,10 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`px-2 py-1.5 rounded text-sm font-medium transition-colors ${
+      className={`px-2 py-1.5 rounded-lg text-sm font-medium transition-all duration-150 ${
         active
-          ? 'bg-indigo-100 text-indigo-700'
-          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-primary text-on-primary shadow-sm'
+          : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface'
       } disabled:opacity-30 disabled:cursor-not-allowed`}
     >
       {children}
@@ -43,7 +43,7 @@ function ToolbarButton({
 }
 
 function Divider() {
-  return <div className="w-px h-6 bg-gray-200 mx-1" />
+  return <div className="w-px h-5 bg-outline-variant/20 mx-1" />
 }
 
 export default function RichTextEditor({ content, onChange }: RichTextEditorProps) {
@@ -57,7 +57,7 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         types: ['heading', 'paragraph'],
       }),
       Placeholder.configure({
-        placeholder: '在这里编辑简历内容...',
+        placeholder: 'Edit your resume content here...',
       }),
     ],
     content,
@@ -67,7 +67,7 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class: 'prose prose-sm max-w-none focus:outline-none min-h-[50vh] px-6 py-5',
+        class: 'prose prose-sm max-w-none focus:outline-none min-h-[50vh] px-6 py-5 font-body text-on-surface',
       },
     },
   })
@@ -82,35 +82,35 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
   if (!editor) return null
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+    <div className="overflow-hidden">
       {/* Toolbar */}
-      <div className="flex items-center flex-wrap gap-0.5 px-3 py-2 border-b border-gray-200 bg-gray-50">
+      <div className="flex items-center flex-wrap gap-0.5 px-3 py-2 bg-surface-container-low">
         {/* Text type */}
         <ToolbarButton
           onClick={() => editor.chain().focus().setParagraph().run()}
           active={editor.isActive('paragraph') && !editor.isActive('heading')}
-          title="正文"
+          title="Body"
         >
-          正文
+          P
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
           active={editor.isActive('heading', { level: 1 })}
-          title="标题 1"
+          title="Heading 1"
         >
           H1
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
           active={editor.isActive('heading', { level: 2 })}
-          title="标题 2"
+          title="Heading 2"
         >
           H2
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
           active={editor.isActive('heading', { level: 3 })}
-          title="标题 3"
+          title="Heading 3"
         >
           H3
         </ToolbarButton>
@@ -121,28 +121,28 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBold().run()}
           active={editor.isActive('bold')}
-          title="加粗"
+          title="Bold"
         >
           <strong>B</strong>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleItalic().run()}
           active={editor.isActive('italic')}
-          title="斜体"
+          title="Italic"
         >
           <em>I</em>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleUnderline().run()}
           active={editor.isActive('underline')}
-          title="下划线"
+          title="Underline"
         >
           <span className="underline">U</span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleStrike().run()}
           active={editor.isActive('strike')}
-          title="删除线"
+          title="Strikethrough"
         >
           <span className="line-through">S</span>
         </ToolbarButton>
@@ -153,26 +153,16 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBulletList().run()}
           active={editor.isActive('bulletList')}
-          title="无序列表"
+          title="Bullet List"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            <circle cx="1" cy="6" r="1" fill="currentColor" />
-            <circle cx="1" cy="12" r="1" fill="currentColor" />
-            <circle cx="1" cy="18" r="1" fill="currentColor" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">format_list_bulleted</span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
           active={editor.isActive('orderedList')}
-          title="有序列表"
+          title="Numbered List"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 6h13M8 12h13M8 18h13" />
-            <text x="0" y="8" fontSize="8" fill="currentColor" fontFamily="sans-serif">1</text>
-            <text x="0" y="14" fontSize="8" fill="currentColor" fontFamily="sans-serif">2</text>
-            <text x="0" y="20" fontSize="8" fill="currentColor" fontFamily="sans-serif">3</text>
-          </svg>
+          <span className="material-symbols-outlined text-sm">format_list_numbered</span>
         </ToolbarButton>
 
         <Divider />
@@ -181,20 +171,16 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
           active={editor.isActive({ textAlign: 'left' })}
-          title="左对齐"
+          title="Align Left"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M3 12h12M3 18h18" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">format_align_left</span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
           active={editor.isActive({ textAlign: 'center' })}
-          title="居中"
+          title="Align Center"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6h18M6 12h12M3 18h18" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">format_align_center</span>
         </ToolbarButton>
 
         <Divider />
@@ -203,19 +189,15 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         <ToolbarButton
           onClick={() => editor.chain().focus().toggleBlockquote().run()}
           active={editor.isActive('blockquote')}
-          title="引用"
+          title="Quote"
         >
-          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">format_quote</span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="分隔线"
+          title="Divider"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeWidth={2} d="M3 12h18" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">horizontal_rule</span>
         </ToolbarButton>
 
         <Divider />
@@ -224,20 +206,16 @@ export default function RichTextEditor({ content, onChange }: RichTextEditorProp
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
           disabled={!editor.can().undo()}
-          title="撤销"
+          title="Undo"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">undo</span>
         </ToolbarButton>
         <ToolbarButton
           onClick={() => editor.chain().focus().redo().run()}
           disabled={!editor.can().redo()}
-          title="重做"
+          title="Redo"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4" />
-          </svg>
+          <span className="material-symbols-outlined text-sm">redo</span>
         </ToolbarButton>
       </div>
 
