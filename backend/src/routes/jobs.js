@@ -3,7 +3,7 @@ const cheerio = require('cheerio')
 const authMiddleware = require('../middleware/authMiddleware')
 const Resume = require('../models/Resume')
 const Application = require('../models/Application')
-const { analyzeAndModify } = require('../services/geminiService')
+const { analyzeAndModify, parseJobPosting } = require('../services/geminiService')
 
 const router = express.Router()
 router.use(authMiddleware)
@@ -22,6 +22,25 @@ async function fetchJobDescription(url) {
   $('script, style, nav, header, footer').remove()
   return $('body').text().replace(/\s+/g, ' ').trim().slice(0, 8000)
 }
+
+// POST /api/jobs/parse-url
+// Body: { url }
+// Returns: { jobTitle, company, jobDescription }
+router.post('/parse-url', async (req, res) => {
+  const { url } = req.body
+  if (!url) {
+    return res.status(400).json({ message: 'URL is required' })
+  }
+
+  try {
+    const rawText = await fetchJobDescription(url)
+    const parsed = await parseJobPosting(rawText)
+    res.json(parsed)
+  } catch (err) {
+    console.error('Parse URL error:', err)
+    res.status(500).json({ message: 'Failed to parse job URL', error: err.message })
+  }
+})
 
 // POST /api/jobs/analyze
 // Body: { resumeId, jobDescription?, jobUrl?, company, position }
