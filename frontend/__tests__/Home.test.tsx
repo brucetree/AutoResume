@@ -1,26 +1,44 @@
-import { render, screen } from '@testing-library/react'
-import Home from '@/app/page'
+/**
+ * Home page now redirects based on auth status:
+ * - Authenticated → /dashboard
+ * - Unauthenticated → /login
+ *
+ * Since it's a server component using getServerSession() and redirect(),
+ * it cannot be unit tested with render(). The redirect logic is verified
+ * by integration/e2e tests instead.
+ */
 
-// Mock next/link and next/font
-jest.mock('next/link', () => {
-  return function Link({ children, href }: { children: React.ReactNode; href: string }) {
-    return <a href={href}>{children}</a>
-  }
-})
-
-jest.mock('next/font/google', () => ({
-  Inter: () => ({ className: 'inter' }),
+// Mock next-auth to avoid jose ESM import issues in Jest
+jest.mock('next-auth', () => ({
+  getServerSession: jest.fn(),
 }))
 
+jest.mock('next/navigation', () => ({
+  redirect: jest.fn(),
+}))
+
+import { getServerSession } from 'next-auth'
+import { redirect } from 'next/navigation'
+import Home from '@/app/page'
+
 describe('Home page', () => {
-  it('renders the app title', () => {
-    render(<Home />)
-    expect(screen.getByText('autoResume')).toBeInTheDocument()
+  beforeEach(() => {
+    jest.clearAllMocks()
   })
 
-  it('renders login and register links', () => {
-    render(<Home />)
-    expect(screen.getByText('立即开始')).toBeInTheDocument()
-    expect(screen.getByText('注册账号')).toBeInTheDocument()
+  it('redirects to /dashboard when authenticated', async () => {
+    ;(getServerSession as jest.Mock).mockResolvedValue({ user: { name: 'Test' } })
+
+    await Home()
+
+    expect(redirect).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('redirects to /login when not authenticated', async () => {
+    ;(getServerSession as jest.Mock).mockResolvedValue(null)
+
+    await Home()
+
+    expect(redirect).toHaveBeenCalledWith('/login')
   })
 })
