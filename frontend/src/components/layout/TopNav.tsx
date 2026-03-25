@@ -19,16 +19,15 @@ export default function TopNav() {
               help_outline
             </span>
           </div>
+          <div className="h-8 w-[1px] bg-outline-variant/30" />
           {session?.user && <UserMenu />}
         </div>
       </header>
 
       {/* Mobile top bar */}
-      <header className="md:hidden fixed top-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-slate-100/80 backdrop-blur-xl">
-        <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-slate-900 cursor-pointer active:scale-95 duration-200">
-            menu
-          </span>
+      <header className="md:hidden fixed top-0 w-full z-50 flex items-center justify-between px-6 py-4 bg-slate-50/80 backdrop-blur-xl">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-slate-900">widgets</span>
           <h1 className="text-xl font-extrabold tracking-tighter text-slate-900 font-headline">AutoResume</h1>
         </div>
         {session?.user && <UserMenu />}

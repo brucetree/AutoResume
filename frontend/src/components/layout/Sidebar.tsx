@@ -49,7 +49,7 @@ export default function Sidebar() {
             href="/resume/upload"
             className="w-full obsidian-gradient text-white py-3 rounded-xl text-sm font-semibold shadow-ambient hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
           >
-            <span className="material-symbols-outlined text-sm">upload_file</span>
+            <span className="material-symbols-outlined text-sm">add_circle</span>
             Analyze New Resume
           </Link>
         </div>

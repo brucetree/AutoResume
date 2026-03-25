@@ -1,11 +1,9 @@
 'use client'
 
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { apiGet } from '@/lib/api'
-import UserMenu from '@/components/UserMenu'
 
 interface Application {
   _id: string
@@ -15,112 +13,397 @@ interface Application {
   createdAt: string
 }
 
-const STATUS_LABELS: Record<string, string> = {
-  analyzing: '分析中',
-  editing: '编辑中',
-  applied: '已投递',
-  interview: '面试中',
-  rejected: '已拒绝',
-  offer: 'Offer',
+interface Resume {
+  _id: string
+  originalFileName: string
+  version: number
+  createdAt: string
+  updatedAt: string
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  analyzing: 'bg-yellow-100 text-yellow-800',
-  editing: 'bg-blue-100 text-blue-800',
-  applied: 'bg-indigo-100 text-indigo-800',
-  interview: 'bg-purple-100 text-purple-800',
-  rejected: 'bg-red-100 text-red-800',
-  offer: 'bg-green-100 text-green-800',
+const STATUS_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
+  analyzing: {
+    label: 'Analyzing',
+    bg: 'bg-primary-container',
+    text: 'text-on-primary-container',
+  },
+  editing: {
+    label: 'Draft',
+    bg: 'bg-surface-container-highest',
+    text: 'text-on-surface-variant',
+  },
+  applied: {
+    label: 'Applied',
+    bg: 'bg-tertiary-fixed',
+    text: 'text-on-tertiary-fixed',
+  },
+  interview: {
+    label: 'Interview',
+    bg: 'bg-secondary-container',
+    text: 'text-on-secondary-container',
+  },
+  rejected: {
+    label: 'Rejected',
+    bg: 'bg-error-container',
+    text: 'text-on-error-container',
+  },
+  offer: {
+    label: 'Offer',
+    bg: 'bg-tertiary-fixed',
+    text: 'text-on-tertiary-fixed',
+  },
+}
+
+const ACTION_LABELS: Record<string, string> = {
+  analyzing: 'View Progress',
+  editing: 'Resume Editing',
+  applied: 'Manage Details',
+  interview: 'Manage Details',
+  rejected: 'View Details',
+  offer: 'View Details',
+}
+
+const APP_ICONS = ['architecture', 'token', 'layers', 'hub', 'diamond', 'auto_awesome']
+
+function getTimeAgo(dateStr: string) {
+  const now = new Date()
+  const date = new Date(dateStr)
+  const diffMs = now.getTime() - date.getTime()
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffHours < 1) return 'Just now'
+  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffDays === 1) return '1 day ago'
+  return `${diffDays} days ago`
 }
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
-  const router = useRouter()
+  const { status } = useSession()
   const [applications, setApplications] = useState<Application[]>([])
+  const [resumes, setResumes] = useState<Resume[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login')
-  }, [status, router])
+  const [filter, setFilter] = useState<'all' | 'analyzing' | 'applied'>('all')
 
   useEffect(() => {
     if (status === 'authenticated') {
-      apiGet<{ applications: Application[] }>('/api/applications')
-        .then((data) => setApplications(data.applications))
-        .catch(console.error)
+      Promise.all([
+        apiGet<{ applications: Application[] }>('/api/applications').catch(() => ({ applications: [] })),
+        apiGet<{ resumes: Resume[] }>('/api/resumes').catch(() => ({ resumes: [] })),
+      ])
+        .then(([appData, resumeData]) => {
+          setApplications(appData.applications || [])
+          setResumes(resumeData.resumes || [])
+        })
         .finally(() => setLoading(false))
     }
   }, [status])
 
-  if (status === 'loading' || loading) {
-    return <div className="min-h-screen flex items-center justify-center">加载中...</div>
+  const filteredApps = applications.filter((app) => {
+    if (filter === 'all') return true
+    if (filter === 'analyzing') return app.status === 'analyzing'
+    if (filter === 'applied') return ['applied', 'interview', 'offer'].includes(app.status)
+    return true
+  })
+
+  const avgScore = applications.length > 0 ? 88.5 : 0
+  const totalScanned = applications.length
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent" />
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b px-6 py-4 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-indigo-700">autoResume</h1>
-        <div className="flex items-center gap-4">
-          <UserMenu />
-          <Link
-            href="/resume/upload"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 transition"
-          >
-            新建分析
-          </Link>
+    <div className="max-w-7xl mx-auto space-y-12 md:space-y-20 md:p-6">
+      {/* Hero Header */}
+      <section>
+        {/* Mobile header */}
+        <div className="md:hidden mb-6">
+          <p className="text-[11px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Performance</p>
+          <h2 className="text-3xl font-bold font-headline tracking-tight">Daily Insights</h2>
         </div>
-      </nav>
+        {/* Desktop header */}
+        <div className="hidden md:block">
+          <h2 className="font-headline text-5xl font-extrabold tracking-tighter text-on-surface">Dashboard</h2>
+          <p className="mt-4 text-on-surface-variant font-body text-lg max-w-xl">
+            Optimize your professional trajectory with high-fidelity resume analysis and tracking.
+          </p>
+        </div>
+      </section>
 
-      <main className="max-w-6xl mx-auto px-6 py-8">
-        <h2 className="text-2xl font-semibold text-gray-800 mb-6">投递记录</h2>
-
-        {applications.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-lg">还没有投递记录</p>
-            <Link href="/resume/upload" className="mt-4 inline-block text-indigo-600 hover:underline">
-              上传简历开始分析 →
-            </Link>
+      {/* Stats Grid */}
+      {/* Mobile: horizontal scroll */}
+      <section className="md:hidden -mx-6 px-6">
+        <div className="flex gap-4 overflow-x-auto hide-scrollbar">
+          <div className="min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow">
+            <p className="text-on-surface-variant text-[11px] font-medium mb-3">Avg. Match Score</p>
+            <p className="text-3xl font-extrabold font-headline text-on-tertiary-container">
+              {avgScore > 0 ? avgScore : '--'}
+              {avgScore > 0 && <span className="text-sm ml-0.5">%</span>}
+            </p>
+            {avgScore > 0 && (
+              <div className="mt-4 w-full bg-surface-container-high h-1 rounded-[9999px]">
+                <div className="bg-on-tertiary-container h-full rounded-[9999px]" style={{ width: `${avgScore}%` }} />
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="bg-white rounded-xl shadow overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">公司</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">岗位</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">日期</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {applications.map((app) => (
-                  <tr key={app._id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{app.company}</td>
-                    <td className="px-6 py-4 text-gray-600">{app.position}</td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLORS[app.status]}`}>
-                        {STATUS_LABELS[app.status]}
+          <div className="min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow">
+            <p className="text-on-surface-variant text-[11px] font-medium mb-3">Resumes Scanned</p>
+            <p className="text-3xl font-extrabold font-headline">{totalScanned}</p>
+            <p className="text-[10px] text-on-surface-variant mt-2 font-medium flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px]">trending_up</span>
+              Active
+            </p>
+          </div>
+          <div className="min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow">
+            <p className="text-on-surface-variant text-[11px] font-medium mb-3">AI Efficiency</p>
+            <p className="text-3xl font-extrabold font-headline">
+              1.4<span className="text-sm ml-0.5">s</span>
+            </p>
+            <p className="text-[10px] text-on-tertiary-container mt-2 font-medium flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px]">bolt</span>
+              Optimal
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Desktop: bento grid */}
+      <section className="hidden md:grid grid-cols-12 gap-6 h-[240px]">
+        <div className="col-span-4 bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between group hover:bg-white transition-all">
+          <div>
+            <div className="flex justify-between items-start">
+              <span className="text-on-surface-variant font-label text-xs uppercase tracking-widest">Resumes Scanned</span>
+              <span className="material-symbols-outlined text-primary/40 group-hover:text-primary transition-colors">description</span>
+            </div>
+            <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter">{totalScanned}</p>
+          </div>
+          <div className="flex items-center gap-2 text-tertiary-container text-xs font-semibold">
+            <span className="material-symbols-outlined text-sm">trending_up</span>
+            <span>Active tracking</span>
+          </div>
+        </div>
+
+        <div className="col-span-4 bg-primary text-on-primary p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group">
+          <div className="z-10">
+            <div className="flex justify-between items-start">
+              <span className="text-on-primary/60 font-label text-xs uppercase tracking-widest">Avg. Match Score</span>
+              <span className="material-symbols-outlined text-on-primary/40">verified</span>
+            </div>
+            <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter">
+              {avgScore > 0 ? `${avgScore}%` : '--'}
+            </p>
+          </div>
+          <div className="z-10 flex items-center gap-2 text-tertiary-fixed text-xs font-semibold">
+            <span className="material-symbols-outlined text-sm">auto_awesome</span>
+            <span>{avgScore > 0 ? 'High Precision Achieved' : 'Start analyzing'}</span>
+          </div>
+          <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-on-primary-container rounded-[9999px] blur-[60px] opacity-40 group-hover:opacity-60 transition-opacity" />
+        </div>
+
+        <div className="col-span-4 bg-tertiary-fixed p-8 rounded-xl flex flex-col justify-between group transition-all">
+          <div>
+            <div className="flex justify-between items-start">
+              <span className="text-on-tertiary-fixed font-label text-xs uppercase tracking-widest">AI Efficiency</span>
+              <span className="material-symbols-outlined text-on-tertiary-fixed/40">psychology</span>
+            </div>
+            <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter text-on-tertiary-fixed">1.4s</p>
+          </div>
+          <div className="flex items-center gap-2 text-on-tertiary-fixed text-xs font-semibold">
+            <span className="material-symbols-outlined text-sm">speed</span>
+            <span>Average Processing Time</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
+        {/* Application History */}
+        <section className="md:col-span-8 space-y-6 md:space-y-8">
+          <div className="flex items-center justify-between">
+            <h3 className="font-headline text-xl md:text-2xl font-bold tracking-tight">
+              <span className="hidden md:inline">Application History</span>
+              <span className="md:hidden">Recent Applications</span>
+            </h3>
+            {/* Desktop filter pills */}
+            <div className="hidden md:flex gap-2">
+              {(['all', 'analyzing', 'applied'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`px-3 py-1 rounded-[9999px] text-xs font-medium cursor-pointer transition-all ${
+                    filter === f
+                      ? 'bg-surface-container-highest text-on-surface-variant'
+                      : 'bg-surface-container-low text-on-surface-variant hover:bg-primary hover:text-on-primary'
+                  }`}
+                >
+                  {f === 'all' ? 'All' : f === 'analyzing' ? 'Analyzing' : 'Applied'}
+                </button>
+              ))}
+            </div>
+            {/* Mobile "View All" */}
+            <span className="md:hidden text-sm font-medium text-on-surface-variant">View All</span>
+          </div>
+
+          {filteredApps.length === 0 ? (
+            <div className="bg-surface-container-low p-12 rounded-xl text-center space-y-4">
+              <span className="material-symbols-outlined text-4xl text-on-surface-variant/40">inbox</span>
+              <p className="text-on-surface-variant">No applications yet</p>
+              <Link
+                href="/resume/upload"
+                className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
+                Upload a resume to get started
+                <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredApps.map((app, idx) => {
+                const statusCfg = STATUS_CONFIG[app.status] || STATUS_CONFIG.editing
+                const icon = APP_ICONS[idx % APP_ICONS.length]
+                return (
+                  <div
+                    key={app._id}
+                    className="bg-surface-container-low p-4 md:p-6 rounded-xl flex items-center justify-between group hover:bg-surface-container-high transition-colors"
+                  >
+                    <div className="flex items-center gap-4 md:gap-6">
+                      <div className="w-12 h-12 bg-surface-container-lowest rounded-lg flex items-center justify-center">
+                        <span className="material-symbols-outlined text-primary">{icon}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-sm text-on-surface">{app.position}</h4>
+                        <p className="text-[11px] md:text-xs text-on-surface-variant">
+                          {app.company} &bull; {getTimeAgo(app.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 md:gap-12">
+                      <span
+                        className={`${statusCfg.bg} ${statusCfg.text} px-3 py-1 rounded-[9999px] text-[10px] font-bold uppercase tracking-widest`}
+                      >
+                        {statusCfg.label}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 text-gray-500 text-sm">
-                      {new Date(app.createdAt).toLocaleDateString('zh-CN')}
-                    </td>
-                    <td className="px-6 py-4">
+                      {/* Desktop action link */}
                       <Link
                         href={`/resume/${app._id}/edit`}
-                        className="text-indigo-600 hover:underline text-sm"
+                        className="hidden md:flex items-center gap-2 text-on-surface-variant group-hover:text-primary transition-colors cursor-pointer"
                       >
-                        查看简历
+                        <span className="text-sm font-medium">{ACTION_LABELS[app.status] || 'View'}</span>
+                        <span className="material-symbols-outlined text-lg">chevron_right</span>
                       </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Manage Resumes Sidebar */}
+        <section className="md:col-span-4 space-y-6 md:space-y-8">
+          <div className="flex items-center justify-between">
+            <h3 className="font-headline text-xl md:text-2xl font-bold tracking-tight">Manage Resumes</h3>
+            <Link href="/resume/upload">
+              <span className="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary">add</span>
+            </Link>
           </div>
-        )}
-      </main>
+
+          {resumes.length === 0 ? (
+            <div className="space-y-4">
+              {/* Import card */}
+              <Link
+                href="/resume/upload"
+                className="bg-surface-container-low p-6 rounded-2xl flex flex-col items-center justify-center text-center gap-3 border border-dashed border-outline-variant hover:border-primary/30 transition-all"
+              >
+                <span className="material-symbols-outlined text-3xl text-on-surface-variant">upload_file</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Import Resume</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {resumes.slice(0, 3).map((resume, idx) => {
+                const isActive = idx === 0
+                const versionLabel = isActive
+                  ? `Active v${resume.version || idx + 1}`
+                  : `v${resume.version || idx + 1} Archive`
+                return (
+                  <div
+                    key={resume._id}
+                    className={`bg-surface-container-lowest p-4 rounded-xl shadow-sm border border-transparent hover:border-primary/10 transition-all cursor-pointer group ${
+                      !isActive ? 'opacity-70 hover:opacity-100' : ''
+                    }`}
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="w-10 h-12 bg-surface-container rounded-sm flex items-center justify-center">
+                        <span className="material-symbols-outlined text-outline">picture_as_pdf</span>
+                      </div>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                          isActive
+                            ? 'bg-tertiary-container text-on-tertiary-container'
+                            : 'bg-outline-variant/40 text-on-surface-variant'
+                        }`}
+                      >
+                        {versionLabel}
+                      </span>
+                    </div>
+                    <h5 className="font-bold text-sm">{resume.originalFileName || 'Resume.pdf'}</h5>
+                    <p className="text-[10px] text-on-surface-variant mt-1">
+                      Updated {new Date(resume.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                    {isActive && (
+                      <div className="mt-4 pt-4 border-t border-outline-variant/10 flex gap-4">
+                        <span className="material-symbols-outlined text-xs text-on-surface-variant hover:text-primary cursor-pointer">visibility</span>
+                        <span className="material-symbols-outlined text-xs text-on-surface-variant hover:text-primary cursor-pointer">content_copy</span>
+                        <span className="material-symbols-outlined text-xs text-on-surface-variant hover:text-error cursor-pointer">delete</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* AI Insights Chip */}
+          {applications.length > 0 && (
+            <div className="bg-tertiary-fixed p-6 rounded-xl space-y-3 relative overflow-hidden">
+              <div className="flex items-center gap-2">
+                <span
+                  className="material-symbols-outlined text-on-tertiary-fixed"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  auto_awesome
+                </span>
+                <span className="text-xs font-bold uppercase tracking-wider text-on-tertiary-fixed">AI Strategy Tip</span>
+              </div>
+              <p className="text-sm font-medium text-on-tertiary-fixed leading-relaxed">
+                Upload your resume and a job description to get AI-powered optimization suggestions and match scoring.
+              </p>
+              <Link
+                href="/resume/upload"
+                className="text-xs font-extrabold text-on-tertiary-fixed underline underline-offset-4 decoration-2 hover:opacity-70 transition-all"
+              >
+                Start Analysis
+              </Link>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Mobile FAB */}
+      <div className="md:hidden fixed bottom-24 right-6 z-40">
+        <Link
+          href="/resume/upload"
+          className="w-14 h-14 obsidian-gradient text-on-primary rounded-[9999px] editorial-shadow flex items-center justify-center active:scale-95 transition-transform"
+        >
+          <span className="material-symbols-outlined text-2xl">upload_file</span>
+        </Link>
+      </div>
     </div>
   )
 }

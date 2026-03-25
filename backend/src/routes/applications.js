@@ -18,7 +18,7 @@ router.get('/', async (req, res) => {
       .populate('modifiedResumeId', 'modifiedContent')
     res.json({ applications })
   } catch (err) {
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: 'Server error' })
   }
 })
 
@@ -31,10 +31,10 @@ router.get('/:id', async (req, res) => {
     })
       .populate('resumeId')
       .populate('modifiedResumeId')
-    if (!app) return res.status(404).json({ message: '记录不存在' })
+    if (!app) return res.status(404).json({ message: 'Record not found' })
     res.json({ application: app })
   } catch (err) {
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: 'Server error' })
   }
 })
 
@@ -43,7 +43,7 @@ router.patch('/:id/status', async (req, res) => {
   const { status } = req.body
   const validStatuses = ['analyzing', 'editing', 'applied', 'interview', 'rejected', 'offer']
   if (!validStatuses.includes(status)) {
-    return res.status(400).json({ message: '无效的状态值' })
+    return res.status(400).json({ message: 'Invalid status value' })
   }
   try {
     const app = await Application.findOneAndUpdate(
@@ -51,10 +51,10 @@ router.patch('/:id/status', async (req, res) => {
       { status },
       { new: true }
     )
-    if (!app) return res.status(404).json({ message: '记录不存在' })
+    if (!app) return res.status(404).json({ message: 'Record not found' })
     res.json({ application: app })
   } catch (err) {
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: 'Server error' })
   }
 })
 
@@ -66,9 +66,9 @@ router.post('/:id/export-pdf', async (req, res) => {
       userId: req.user.sub || req.user.id,
     }).populate('modifiedResumeId')
 
-    if (!app) return res.status(404).json({ message: '记录不存在' })
+    if (!app) return res.status(404).json({ message: 'Record not found' })
     if (!app.modifiedResumeId?.modifiedContent) {
-      return res.status(400).json({ message: '没有修改后的简历内容' })
+      return res.status(400).json({ message: 'No modified resume content found' })
     }
 
     const pdfPath = await generatePdf(
@@ -86,7 +86,7 @@ router.post('/:id/export-pdf', async (req, res) => {
     })
   } catch (err) {
     console.error('PDF export error:', err)
-    res.status(500).json({ message: 'PDF 生成失败', error: err.message })
+    res.status(500).json({ message: 'PDF generation failed', error: err.message })
   }
 })
 

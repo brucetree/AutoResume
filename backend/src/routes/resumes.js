@@ -11,7 +11,7 @@ router.use(authMiddleware)
 // POST /api/resumes — upload and parse a resume file
 router.post('/', upload.single('file'), async (req, res) => {
   if (!req.file) {
-    return res.status(400).json({ message: '请上传文件' })
+    return res.status(400).json({ message: 'Please upload a file' })
   }
 
   const ext = path.extname(req.file.originalname).toLowerCase().replace('.', '')
@@ -31,7 +31,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     res.status(201).json({ resume })
   } catch (err) {
     console.error('Resume upload error:', err)
-    res.status(500).json({ message: '文件解析失败', error: err.message })
+    res.status(500).json({ message: 'File parsing failed', error: err.message })
   }
 })
 
@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
       .select('-parsedText')
     res.json({ resumes })
   } catch (err) {
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: 'Server error' })
   }
 })
 
@@ -54,10 +54,10 @@ router.get('/:id', async (req, res) => {
       _id: req.params.id,
       userId: req.user.sub || req.user.id,
     })
-    if (!resume) return res.status(404).json({ message: '简历不存在' })
+    if (!resume) return res.status(404).json({ message: 'Resume not found' })
     res.json({ resume })
   } catch (err) {
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: 'Server error' })
   }
 })
 
@@ -70,10 +70,10 @@ router.put('/:id', async (req, res) => {
       { modifiedContent },
       { new: true }
     )
-    if (!resume) return res.status(404).json({ message: '简历不存在' })
+    if (!resume) return res.status(404).json({ message: 'Resume not found' })
     res.json({ resume })
   } catch (err) {
-    res.status(500).json({ message: '服务器错误' })
+    res.status(500).json({ message: 'Server error' })
   }
 })
 
