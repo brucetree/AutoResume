@@ -70,8 +70,9 @@ describe('DashboardPage', () => {
   it('links to edit page using application ID', async () => {
     render(<DashboardPage />)
     await waitFor(() => {
-      const links = screen.getAllByText('Resume Editing')
-      expect(links[0].closest('a')).toHaveAttribute('href', '/resume/app1/edit')
+      // Application items link to edit page — find links containing the position text
+      const link = screen.getByText('SWE').closest('a')
+      expect(link).toHaveAttribute('href', '/resume/app1/edit')
     })
   })
 

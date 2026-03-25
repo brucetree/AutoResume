@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { apiGet } from '@/lib/api'
+import { apiGet, apiDelete } from '@/lib/api'
 
 interface Application {
   _id: string
@@ -84,20 +84,34 @@ export default function DashboardPage() {
   const [resumes, setResumes] = useState<Resume[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'analyzing' | 'applied'>('all')
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+
+  const fetchData = () => {
+    Promise.all([
+      apiGet<{ applications: Application[] }>('/api/applications').catch(() => ({ applications: [] })),
+      apiGet<{ resumes: Resume[] }>('/api/resumes').catch(() => ({ resumes: [] })),
+    ])
+      .then(([appData, resumeData]) => {
+        setApplications(appData.applications || [])
+        setResumes(resumeData.resumes || [])
+      })
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      Promise.all([
-        apiGet<{ applications: Application[] }>('/api/applications').catch(() => ({ applications: [] })),
-        apiGet<{ resumes: Resume[] }>('/api/resumes').catch(() => ({ resumes: [] })),
-      ])
-        .then(([appData, resumeData]) => {
-          setApplications(appData.applications || [])
-          setResumes(resumeData.resumes || [])
-        })
-        .finally(() => setLoading(false))
-    }
+    if (status === 'authenticated') fetchData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status])
+
+  const handleDeleteApp = async (id: string) => {
+    try {
+      await apiDelete(`/api/applications/${id}`)
+      setApplications((prev) => prev.filter((a) => a._id !== id))
+    } catch (err) {
+      console.error('Delete application failed:', err)
+    }
+    setDeleteConfirmId(null)
+  }
 
   const filteredApps = applications.filter((app) => {
     if (filter === 'all') return true
@@ -269,33 +283,61 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={app._id}
-                    className="bg-surface-container-low p-4 md:p-6 rounded-xl flex items-center justify-between group hover:bg-surface-container-high transition-colors"
+                    className="bg-surface-container-low rounded-xl group hover:bg-surface-container-high transition-colors"
                   >
-                    <div className="flex items-center gap-4 md:gap-6">
-                      <div className="w-12 h-12 bg-surface-container-lowest rounded-lg flex items-center justify-center">
-                        <span className="material-symbols-outlined text-primary">{icon}</span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-sm text-on-surface">{app.position}</h4>
-                        <p className="text-[11px] md:text-xs text-on-surface-variant">
-                          {app.company} &bull; {getTimeAgo(app.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 md:gap-12">
-                      <span
-                        className={`${statusCfg.bg} ${statusCfg.text} px-3 py-1 rounded-[9999px] text-[10px] font-bold uppercase tracking-widest`}
-                      >
-                        {statusCfg.label}
-                      </span>
-                      {/* Desktop action link */}
+                    <div className="p-4 md:p-6 flex items-center justify-between">
+                      {/* Mobile: entire left side is a link */}
                       <Link
                         href={`/resume/${app._id}/edit`}
-                        className="hidden md:flex items-center gap-2 text-on-surface-variant group-hover:text-primary transition-colors cursor-pointer"
+                        className="flex items-center gap-4 md:gap-6 flex-1 min-w-0"
                       >
-                        <span className="text-sm font-medium">{ACTION_LABELS[app.status] || 'View'}</span>
-                        <span className="material-symbols-outlined text-lg">chevron_right</span>
+                        <div className="w-12 h-12 bg-surface-container-lowest rounded-lg flex items-center justify-center flex-shrink-0">
+                          <span className="material-symbols-outlined text-primary">{icon}</span>
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-semibold text-sm text-on-surface">{app.position}</h4>
+                          <p className="text-[11px] md:text-xs text-on-surface-variant">
+                            {app.company} &bull; {getTimeAgo(app.createdAt)}
+                          </p>
+                        </div>
                       </Link>
+
+                      <div className="flex items-center gap-3 md:gap-4 flex-shrink-0">
+                        {/* Status badge — desktop only */}
+                        <span
+                          className={`hidden md:inline-block ${statusCfg.bg} ${statusCfg.text} px-3 py-1 rounded-[9999px] text-[10px] font-bold uppercase tracking-widest`}
+                        >
+                          {statusCfg.label}
+                        </span>
+
+                        {/* Desktop: chevron link */}
+                        <Link
+                          href={`/resume/${app._id}/edit`}
+                          className="hidden md:flex items-center text-on-surface-variant group-hover:text-primary transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-lg">chevron_right</span>
+                        </Link>
+
+                        {/* Mobile: status badge (compact) */}
+                        <span
+                          className={`md:hidden ${statusCfg.bg} ${statusCfg.text} px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-tight`}
+                        >
+                          {statusCfg.label}
+                        </span>
+
+                        {/* Delete button — both desktop and mobile */}
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            setDeleteConfirmId(app._id)
+                          }}
+                          className="text-on-surface-variant/40 hover:text-error transition-colors p-1"
+                          title="Delete application"
+                        >
+                          <span className="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )
@@ -404,6 +446,37 @@ export default function DashboardPage() {
           <span className="material-symbols-outlined text-2xl">upload_file</span>
         </Link>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm px-6">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-error-container flex items-center justify-center">
+                <span className="material-symbols-outlined text-error">warning</span>
+              </div>
+              <h3 className="font-headline font-bold text-lg">Delete Application?</h3>
+            </div>
+            <p className="text-sm text-on-surface-variant">
+              This will permanently remove this application record and its analysis data.
+            </p>
+            <div className="flex gap-3 justify-end pt-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteApp(deleteConfirmId)}
+                className="px-4 py-2 text-sm font-medium text-white bg-error rounded-lg hover:bg-error/90 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

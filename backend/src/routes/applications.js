@@ -90,4 +90,18 @@ router.post('/:id/export-pdf', async (req, res) => {
   }
 })
 
+// DELETE /api/applications/:id — delete an application
+router.delete('/:id', async (req, res) => {
+  const userId = req.user.sub || req.user.id
+  try {
+    const app = await Application.findOne({ _id: req.params.id, userId })
+    if (!app) return res.status(404).json({ message: 'Record not found' })
+    await Application.deleteOne({ _id: req.params.id })
+    res.json({ message: 'Application deleted successfully' })
+  } catch (err) {
+    console.error('Application delete error:', err)
+    res.status(500).json({ message: 'Server error' })
+  }
+})
+
 module.exports = router
