@@ -1,13 +1,21 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Inter, Manrope } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+})
+
+const manrope = Manrope({
+  subsets: ['latin'],
+  variable: '--font-manrope',
+})
 
 export const metadata: Metadata = {
-  title: 'autoResume — AI 简历优化',
-  description: '上传简历，匹配岗位，AI 优化，一键导出 PDF',
+  title: 'AutoResume — The Digital Architect',
+  description: 'Create your high-end professional narrative with AI-driven precision and editorial flair.',
 }
 
 export default function RootLayout({
@@ -16,8 +24,15 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
-      <body className={inter.className}>
+    <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+          rel="stylesheet"
+          precedence="default"
+        />
+      </head>
+      <body className={`${inter.variable} ${manrope.variable} font-body bg-surface text-on-surface`}>
         <Providers>{children}</Providers>
       </body>
     </html>

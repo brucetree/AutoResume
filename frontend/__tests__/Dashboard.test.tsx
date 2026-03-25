@@ -13,6 +13,7 @@ jest.mock('next-auth/react', () => ({
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
+  usePathname: () => '/dashboard',
 }))
 
 jest.mock('next/link', () => {
@@ -51,39 +52,62 @@ const mockApplications = [
 describe('DashboardPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockApiGet.mockResolvedValue({ applications: mockApplications })
+    mockApiGet.mockImplementation((path: string) => {
+      if (path === '/api/applications') return Promise.resolve({ applications: mockApplications })
+      if (path === '/api/resumes') return Promise.resolve({ resumes: [] })
+      return Promise.resolve({})
+    })
   })
 
   it('renders application records', async () => {
     render(<DashboardPage />)
     await waitFor(() => {
-      expect(screen.getByText('Google')).toBeInTheDocument()
-      expect(screen.getByText('Meta')).toBeInTheDocument()
+      expect(screen.getByText('SWE')).toBeInTheDocument()
+      expect(screen.getByText('Frontend')).toBeInTheDocument()
     })
   })
 
   it('links to edit page using application ID', async () => {
     render(<DashboardPage />)
     await waitFor(() => {
-      const links = screen.getAllByText('查看简历')
-      expect(links[0].closest('a')).toHaveAttribute('href', '/resume/app1/edit')
-      expect(links[1].closest('a')).toHaveAttribute('href', '/resume/app2/edit')
+      // Application items link to edit page — find links containing the position text
+      const link = screen.getByText('SWE').closest('a')
+      expect(link).toHaveAttribute('href', '/resume/app1/edit')
     })
   })
 
   it('shows empty state when no applications', async () => {
-    mockApiGet.mockResolvedValue({ applications: [] })
+    mockApiGet.mockImplementation((path: string) => {
+      if (path === '/api/applications') return Promise.resolve({ applications: [] })
+      if (path === '/api/resumes') return Promise.resolve({ resumes: [] })
+      return Promise.resolve({})
+    })
     render(<DashboardPage />)
     await waitFor(() => {
-      expect(screen.getByText('还没有投递记录')).toBeInTheDocument()
+      expect(screen.getByText('No applications yet')).toBeInTheDocument()
     })
   })
 
   it('displays status labels correctly', async () => {
     render(<DashboardPage />)
     await waitFor(() => {
-      expect(screen.getByText('编辑中')).toBeInTheDocument()
-      expect(screen.getByText('已投递')).toBeInTheDocument()
+      expect(screen.getAllByText('Draft').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Applied').length).toBeGreaterThan(0)
+    })
+  })
+
+  it('renders dashboard heading on desktop', async () => {
+    render(<DashboardPage />)
+    await waitFor(() => {
+      expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    })
+  })
+
+  it('renders stats section', async () => {
+    render(<DashboardPage />)
+    await waitFor(() => {
+      expect(screen.getAllByText(/Resumes Scanned/i).length).toBeGreaterThan(0)
+      expect(screen.getAllByText(/AI Efficiency/i).length).toBeGreaterThan(0)
     })
   })
 })

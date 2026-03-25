@@ -3,7 +3,7 @@ const cheerio = require('cheerio')
 const authMiddleware = require('../middleware/authMiddleware')
 const Resume = require('../models/Resume')
 const Application = require('../models/Application')
-const { analyzeAndModify } = require('../services/geminiService')
+const { analyzeAndModify, parseJobPosting } = require('../services/geminiService')
 
 const router = express.Router()
 router.use(authMiddleware)
@@ -23,16 +23,35 @@ async function fetchJobDescription(url) {
   return $('body').text().replace(/\s+/g, ' ').trim().slice(0, 8000)
 }
 
+// POST /api/jobs/parse-url
+// Body: { url }
+// Returns: { jobTitle, company, jobDescription }
+router.post('/parse-url', async (req, res) => {
+  const { url } = req.body
+  if (!url) {
+    return res.status(400).json({ message: 'URL is required' })
+  }
+
+  try {
+    const rawText = await fetchJobDescription(url)
+    const parsed = await parseJobPosting(rawText)
+    res.json(parsed)
+  } catch (err) {
+    console.error('Parse URL error:', err)
+    res.status(500).json({ message: 'Failed to parse job URL', error: err.message })
+  }
+})
+
 // POST /api/jobs/analyze
 // Body: { resumeId, jobDescription?, jobUrl?, company, position }
 router.post('/analyze', async (req, res) => {
   const { resumeId, jobDescription, jobUrl, company, position } = req.body
 
   if (!resumeId || !company || !position) {
-    return res.status(400).json({ message: 'resumeId, company, position 为必填项' })
+    return res.status(400).json({ message: 'resumeId, company, and position are required' })
   }
   if (!jobDescription && !jobUrl) {
-    return res.status(400).json({ message: '请提供岗位描述或岗位 URL' })
+    return res.status(400).json({ message: 'Please provide a job description or job URL' })
   }
 
   try {
@@ -40,8 +59,8 @@ router.post('/analyze', async (req, res) => {
       _id: resumeId,
       userId: req.user.sub || req.user.id,
     })
-    if (!resume) return res.status(404).json({ message: '简历不存在' })
-    if (!resume.parsedText) return res.status(400).json({ message: '简历文本为空，请重新上传' })
+    if (!resume) return res.status(404).json({ message: 'Resume not found' })
+    if (!resume.parsedText) return res.status(400).json({ message: 'Resume text is empty, please re-upload' })
 
     let jobText = jobDescription
     if (!jobText && jobUrl) {
@@ -81,7 +100,7 @@ router.post('/analyze', async (req, res) => {
     })
   } catch (err) {
     console.error('Analyze error:', err)
-    res.status(500).json({ message: 'AI 分析失败', error: err.message })
+    res.status(500).json({ message: 'AI analysis failed', error: err.message })
   }
 })
 

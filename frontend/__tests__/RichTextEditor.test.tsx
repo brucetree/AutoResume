@@ -5,33 +5,33 @@ import RichTextEditor from '@/components/RichTextEditor'
 describe('RichTextEditor', () => {
   it('renders the editor with toolbar buttons', () => {
     render(<RichTextEditor content="" onChange={jest.fn()} />)
-    expect(screen.getByTitle('加粗')).toBeInTheDocument()
-    expect(screen.getByTitle('斜体')).toBeInTheDocument()
-    expect(screen.getByTitle('下划线')).toBeInTheDocument()
-    expect(screen.getByTitle('撤销')).toBeInTheDocument()
-    expect(screen.getByTitle('重做')).toBeInTheDocument()
+    expect(screen.getByTitle('Bold')).toBeInTheDocument()
+    expect(screen.getByTitle('Italic')).toBeInTheDocument()
+    expect(screen.getByTitle('Underline')).toBeInTheDocument()
+    expect(screen.getByTitle('Undo')).toBeInTheDocument()
+    expect(screen.getByTitle('Redo')).toBeInTheDocument()
   })
 
   it('renders heading buttons', () => {
     render(<RichTextEditor content="" onChange={jest.fn()} />)
-    expect(screen.getByTitle('标题 1')).toBeInTheDocument()
-    expect(screen.getByTitle('标题 2')).toBeInTheDocument()
-    expect(screen.getByTitle('标题 3')).toBeInTheDocument()
-    expect(screen.getByText('正文')).toBeInTheDocument()
+    expect(screen.getByTitle('Heading 1')).toBeInTheDocument()
+    expect(screen.getByTitle('Heading 2')).toBeInTheDocument()
+    expect(screen.getByTitle('Heading 3')).toBeInTheDocument()
+    expect(screen.getByText('P')).toBeInTheDocument()
   })
 
   it('renders list buttons', () => {
     render(<RichTextEditor content="" onChange={jest.fn()} />)
-    expect(screen.getByTitle('无序列表')).toBeInTheDocument()
-    expect(screen.getByTitle('有序列表')).toBeInTheDocument()
+    expect(screen.getByTitle('Bullet List')).toBeInTheDocument()
+    expect(screen.getByTitle('Numbered List')).toBeInTheDocument()
   })
 
   it('renders alignment and block buttons', () => {
     render(<RichTextEditor content="" onChange={jest.fn()} />)
-    expect(screen.getByTitle('左对齐')).toBeInTheDocument()
-    expect(screen.getByTitle('居中')).toBeInTheDocument()
-    expect(screen.getByTitle('引用')).toBeInTheDocument()
-    expect(screen.getByTitle('分隔线')).toBeInTheDocument()
+    expect(screen.getByTitle('Align Left')).toBeInTheDocument()
+    expect(screen.getByTitle('Align Center')).toBeInTheDocument()
+    expect(screen.getByTitle('Quote')).toBeInTheDocument()
+    expect(screen.getByTitle('Divider')).toBeInTheDocument()
   })
 
   it('renders initial HTML content', () => {
