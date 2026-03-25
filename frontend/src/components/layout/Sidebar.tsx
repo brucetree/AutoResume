@@ -16,8 +16,11 @@ export default function Sidebar() {
   return (
     <aside className="hidden md:flex h-screen w-64 fixed left-0 top-0 flex-col py-8 px-4 bg-slate-50 font-headline tracking-tight z-50">
       <div className="mb-12 px-2">
-        <h1 className="text-xl font-bold tracking-tighter text-slate-900">AutoResume</h1>
-        <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant mt-1">High-End Analysis</p>
+        <div className="flex items-center gap-2 mb-1">
+          <span className="material-symbols-outlined text-slate-900 text-2xl">widgets</span>
+          <h1 className="text-xl font-bold tracking-tighter text-slate-900">AutoResume</h1>
+        </div>
+        <p className="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant/60 font-medium">High-End Analysis</p>
       </div>
 
       <nav className="flex-1 space-y-2">
