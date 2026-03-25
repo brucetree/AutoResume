@@ -120,8 +120,8 @@ export default function ResumesPage() {
       a.download = fileName
       a.click()
       URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Download failed:', err)
+    } catch {
+      alert('File not available for download. The original file may have been removed from the server.')
     }
   }
 
