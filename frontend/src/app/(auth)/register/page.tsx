@@ -56,13 +56,15 @@ export default function RegisterPage() {
         <Link href="/" className="text-on-surface active:scale-95 transition-transform duration-200">
           <span className="material-symbols-outlined">arrow_back</span>
         </Link>
+        <span className="material-symbols-outlined text-on-surface text-xl">widgets</span>
         <span className="text-xl font-extrabold tracking-tighter text-on-surface font-headline">AutoResume</span>
       </header>
 
       {/* Desktop Navigation */}
       <nav className="hidden lg:block fixed top-0 w-full z-50 bg-surface-container-low/80 backdrop-blur-xl">
         <div className="flex justify-between items-center px-8 py-6 max-w-screen-2xl mx-auto">
-          <Link href="/" className="text-xl font-bold tracking-tighter text-on-surface font-headline">
+          <Link href="/" className="flex items-center gap-2 text-xl font-bold tracking-tighter text-on-surface font-headline">
+            <span className="material-symbols-outlined text-on-surface text-xl">widgets</span>
             AutoResume
           </Link>
           <div className="flex gap-8 items-center">
