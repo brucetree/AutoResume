@@ -29,7 +29,7 @@ docker run --rm -v "$data_path/conf:/etc/letsencrypt" \
 
 echo "### Starting nginx with dummy certificate ..."
 cd /home/ec2-user/autoresume
-docker compose -f docker-compose.prod.yml up -d nginx
+docker-compose -f docker-compose.prod.yml up -d nginx
 
 echo "### Waiting for nginx to start ..."
 sleep 5
@@ -66,6 +66,6 @@ docker run --rm \
   $domain_args
 
 echo "### Reloading nginx ..."
-docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+docker-compose -f docker-compose.prod.yml exec nginx nginx -s reload
 
 echo "### Done! SSL certificate installed for ${domains[0]}"

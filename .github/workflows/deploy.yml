@@ -151,7 +151,7 @@ jobs:
             aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 082499809818.dkr.ecr.ap-southeast-2.amazonaws.com
 
             # Pull latest images
-            docker compose -f docker-compose.prod.yml pull backend frontend
+            docker-compose -f docker-compose.prod.yml pull backend frontend
 
             # Check if SSL certs exist
             if [ ! -f "certbot/conf/live/autoresume.org/fullchain.pem" ]; then
@@ -161,8 +161,8 @@ jobs:
             fi
 
             # Restart all services
-            docker compose -f docker-compose.prod.yml down
-            docker compose -f docker-compose.prod.yml up -d
+            docker-compose -f docker-compose.prod.yml down
+            docker-compose -f docker-compose.prod.yml up -d
             docker image prune -f
           DEPLOY_SCRIPT
 
