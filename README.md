@@ -126,8 +126,9 @@ This means there are **two paths** to reach Express:
 
 | Request Path | Routed To | Why |
 |---|---|---|
-| `/api/auth/*` | Next.js (:3000) | NextAuth handles login/session/OAuth callbacks |
-| `/api/*` | Express (:5001) | All business logic API endpoints |
+| `/api/auth/(session\|callback\|signin\|signout\|csrf\|providers\|error)` | Next.js (:3000) | NextAuth handles sessions & OAuth callbacks |
+| `/api/auth/register`, `/api/auth/login`, etc. | Express (:5001) | Business auth endpoints (register, login, profile, password) |
+| `/api/*` | Express (:5001) | All other business logic API endpoints |
 | `/health` | Express (:5001) | Health check for deployment verification |
 | `/*` | Next.js (:3000) | Pages, static assets, everything else |
 | HTTP :80 | Redirect → HTTPS :443 | SSL enforcement |

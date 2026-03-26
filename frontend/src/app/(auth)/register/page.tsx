@@ -227,8 +227,8 @@ export default function RegisterPage() {
                   />
                 </div>
 
-                {/* Terms checkbox — Desktop only */}
-                <div className="hidden lg:flex items-start gap-3 px-1">
+                {/* Terms checkbox */}
+                <div className="flex items-start gap-3 px-1">
                   <input
                     id="terms"
                     name="terms"
