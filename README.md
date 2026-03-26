@@ -77,28 +77,103 @@ Three isolated MongoDB Atlas databases for environment separation:
 
 ## Architecture
 
+### Production (HTTPS via Nginx)
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      AWS EC2                            │
-│  ┌──────────────────┐    ┌───────────────────────────┐  │
-│  │   Frontend        │    │   Backend                 │  │
-│  │   Next.js 15      │◄──►│   Express.js              │  │
-│  │   Port 3000       │    │   Port 5001               │  │
-│  │                   │    │                           │  │
-│  │  • App Router     │    │  • REST API (17+ routes)  │  │
-│  │  • NextAuth JWT   │    │  • JWT Auth Middleware     │  │
-│  │  • TipTap Editor  │    │  • Gemini AI Service      │  │
-│  │  • Tailwind CSS   │    │  • Puppeteer PDF Gen      │  │
-│  └──────────────────┘    │  • Resume Parser          │  │
-│                           └───────────┬───────────────┘  │
-│                                       │                  │
-└───────────────────────────────────────┼──────────────────┘
+Browser ── https://autoresume.org ──▶ Nginx (:443)
                                         │
-                              ┌─────────▼─────────┐
-                              │  MongoDB Atlas     │
-                              │  (Cloud Database)  │
-                              └───────────────────┘
+                    ┌───────────────────┼───────────────────┐
+                    │                   │                   │
+                    ▼                   ▼                   ▼
+              /api/auth/*          /api/*             /* (everything else)
+                    │                   │                   │
+                    ▼                   ▼                   ▼
+              Next.js (:3000)    Express (:5001)     Next.js (:3000)
+              (NextAuth)         (Business API)      (Pages & Assets)
+                    │
+                    │ INTERNAL_API_URL
+                    ▼
+              Express (:5001)  ◄──── Docker internal network
+                    │
+                    ▼
+              MongoDB Atlas
 ```
+
+### Local Development (No Nginx)
+
+```
+Browser ──▶ Next.js (:3000)  ──── NEXT_PUBLIC_API_URL ────▶ Express (:5001)
+                                                                │
+                                                                ▼
+                                                          MongoDB Atlas
+```
+
+### Why Does Next.js Talk to Express?
+
+Next.js is **both a frontend and a server**. It serves two roles:
+
+| Code | Runs On | Example |
+|------|---------|---------|
+| `'use client'` components | **Browser** | Dashboard page fetches `/api/applications` |
+| `auth.ts`, API routes | **Next.js server** | NextAuth calls Express to verify passwords |
+
+This means there are **two paths** to reach Express:
+
+1. **Browser → Nginx → Express** — Client-side `fetch('/api/applications')` uses relative paths, Nginx proxies to Express
+2. **Next.js server → Express** — Server-side `auth.ts` uses `INTERNAL_API_URL=http://backend:5001` via Docker internal network
+
+### Nginx Routing Rules
+
+| Request Path | Routed To | Why |
+|---|---|---|
+| `/api/auth/*` | Next.js (:3000) | NextAuth handles login/session/OAuth callbacks |
+| `/api/*` | Express (:5001) | All business logic API endpoints |
+| `/health` | Express (:5001) | Health check for deployment verification |
+| `/*` | Next.js (:3000) | Pages, static assets, everything else |
+| HTTP :80 | Redirect → HTTPS :443 | SSL enforcement |
+
+### Request Flow Example
+
+```
+User clicks "Login" with email/password:
+
+1. Browser submits form → POST /api/auth/callback/credentials
+2. Nginx sees /api/auth/ → forwards to Next.js (:3000)
+3. auth.ts runs on Next.js server, calls Express via Docker network:
+   fetch('http://backend:5001/api/auth/login', { email, password })
+4. Express validates credentials against MongoDB, returns JWT
+5. Next.js sets session cookie, redirects browser to /dashboard
+
+User lands on Dashboard:
+
+6. Browser loads page from Next.js (via Nginx)
+7. Client-side JS runs fetch('/api/applications')  ← relative path
+8. Nginx sees /api/ → forwards to Express (:5001)
+9. Express queries MongoDB, returns application list
+10. Dashboard renders the data
+```
+
+### Environment Variables
+
+The app uses different env var sources per environment:
+
+**Local Development** — env vars loaded from files by Next.js and Express automatically:
+
+| File | Used By | Contains |
+|---|---|---|
+| `frontend/.env` | Next.js (auto-loaded) | `NEXT_PUBLIC_API_URL=http://localhost:5001`, auth secrets |
+| `backend/.env` | Express (via dotenv) | `MONGO_URI`, `GEMINI_API_KEY`, `FRONTEND_URL` |
+
+**Production (Docker on EC2)** — env vars injected via `docker-compose.prod.yml`:
+
+| File / Source | Used By | Contains |
+|---|---|---|
+| `.env.frontend` (on EC2) | Next.js container (`env_file`) | `NEXTAUTH_URL`, `NEXTAUTH_SECRET`, OAuth credentials |
+| `.env.backend` (on EC2) | Express container (`env_file`) | `MONGO_URI`, `GEMINI_API_KEY`, `FRONTEND_URL` |
+| `docker-compose.prod.yml` | Next.js container (`environment`) | `INTERNAL_API_URL=http://backend:5001` |
+| Docker build arg | Baked into JS at build time | `NEXT_PUBLIC_API_URL=""` → relative paths |
+
+> **Key concept:** `NEXT_PUBLIC_*` variables are **inlined at build time** by Next.js into client-side JavaScript. They are not read at runtime. This is why the Docker build passes `--build-arg NEXT_PUBLIC_API_URL=""` — it bakes empty string into the JS so all client-side API calls use relative paths (`/api/...`), which Nginx proxies to the correct service. The `.dockerignore` file blocks `frontend/.env` from entering the Docker image to prevent local dev values from leaking into production builds.
 
 ## Git Workflow
 
@@ -166,7 +241,7 @@ NEXT_PUBLIC_API_URL=http://localhost:5001
 # Backend tests (20 tests)
 cd backend && npm test
 
-# Frontend tests (31 tests)
+# Frontend tests (37 tests)
 cd frontend && npm test
 ```
 

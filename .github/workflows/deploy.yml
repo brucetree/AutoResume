@@ -98,7 +98,7 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
         run: |
-          docker build --build-arg NEXT_PUBLIC_API_URL=http://${{ secrets.EC2_HOST }}:5001 \
+          docker build --build-arg NEXT_PUBLIC_API_URL="" \
                         -t $ECR_REGISTRY/autoresume-frontend:latest \
                         -t $ECR_REGISTRY/autoresume-frontend:${{ github.sha }} \
                         ./frontend
@@ -125,12 +125,16 @@ jobs:
           echo "$EC2_SSH_KEY" > key.pem
           chmod 600 key.pem
 
-      - name: Copy compose file to EC2
+      - name: Copy files to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           scp -o StrictHostKeyChecking=no -i key.pem \
             docker-compose.prod.yml \
+            init-letsencrypt.sh \
+            ec2-user@$EC2_HOST:/home/ec2-user/autoresume/
+          scp -o StrictHostKeyChecking=no -i key.pem -r \
+            nginx/ \
             ec2-user@$EC2_HOST:/home/ec2-user/autoresume/
 
       - name: Deploy on EC2
@@ -139,18 +143,32 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << 'DEPLOY_SCRIPT'
             cd /home/ec2-user/autoresume
+
+            # Create certbot directories if they don't exist
+            mkdir -p certbot/conf certbot/www certbot/lib
+
+            # Login to ECR
             aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 082499809818.dkr.ecr.ap-southeast-2.amazonaws.com
+
+            # Pull latest images
+            docker-compose -f docker-compose.prod.yml pull backend frontend
+
+            # Check if SSL certs exist
+            if [ ! -f "certbot/conf/live/autoresume.org/fullchain.pem" ]; then
+              echo "SSL certs not found, running init-letsencrypt.sh..."
+              chmod +x init-letsencrypt.sh
+              bash init-letsencrypt.sh
+            fi
+
+            # Restart all services
             docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml pull
             docker-compose -f docker-compose.prod.yml up -d
             docker image prune -f
           DEPLOY_SCRIPT
 
       - name: Verify deployment
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
-          sleep 15
-          curl -f http://$EC2_HOST:5001/health || (echo "Backend health check failed" && exit 1)
-          curl -f http://$EC2_HOST:3000 || (echo "Frontend health check failed" && exit 1)
+          sleep 20
+          curl -f -k https://autoresume.org/health || (echo "Backend health check failed" && exit 1)
+          curl -f -k https://autoresume.org || (echo "Frontend health check failed" && exit 1)
           echo "Deployment verified successfully"
