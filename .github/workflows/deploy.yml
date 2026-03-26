@@ -153,16 +153,16 @@ jobs:
             # Pull latest images
             docker-compose -f docker-compose.prod.yml pull backend frontend
 
-            # Check if SSL certs exist
-            if [ ! -f "certbot/conf/live/autoresume.org/fullchain.pem" ]; then
-              echo "SSL certs not found, running init-letsencrypt.sh..."
+            # Only run SSL setup on first deploy (never automatically re-request)
+            # To manually renew: ssh into EC2 and run: bash init-letsencrypt.sh
+            if [ ! -d "certbot/conf/live" ]; then
+              echo "First deploy: running SSL setup..."
               chmod +x init-letsencrypt.sh
               bash init-letsencrypt.sh
             fi
 
-            # Restart all services
-            docker-compose -f docker-compose.prod.yml down
-            docker-compose -f docker-compose.prod.yml up -d
+            # Restart services (preserve volumes, no down to keep certbot data)
+            docker-compose -f docker-compose.prod.yml up -d --force-recreate
             docker image prune -f
           DEPLOY_SCRIPT
 
