@@ -65,6 +65,20 @@ docker run --rm \
   --force-renewal \
   $domain_args
 
+# Check if certificate was obtained successfully
+if [ ! -f "$data_path/conf/live/${domains[0]}/fullchain.pem" ]; then
+  echo "### ERROR: Failed to obtain certificate. Restoring dummy certificate for nginx to start..."
+  mkdir -p "$data_path/conf/live/${domains[0]}"
+  docker run --rm -v "$data_path/conf:/etc/letsencrypt" \
+    --entrypoint openssl alpine/openssl \
+    req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "$path/privkey.pem" \
+    -out "$path/fullchain.pem" \
+    -subj "/CN=localhost"
+  echo "### Dummy certificate restored. Re-run this script later to get a real certificate."
+  exit 1
+fi
+
 echo "### Reloading nginx ..."
 docker-compose -f docker-compose.prod.yml exec nginx nginx -s reload
 
