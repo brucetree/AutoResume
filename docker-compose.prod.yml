@@ -8,8 +8,8 @@ services:
       - "443:443"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - certbot-etc:/etc/letsencrypt:ro
-      - certbot-www:/var/www/certbot:ro
+      - ssl-certs:/etc/ssl/acme:ro
+      - ssl-www:/var/www/certbot:ro
     depends_on:
       - frontend
       - backend
@@ -19,10 +19,10 @@ services:
     container_name: autoresume-certbot
     restart: unless-stopped
     volumes:
-      - certbot-etc:/etc/letsencrypt
-      - certbot-lib:/var/lib/letsencrypt
-      - certbot-www:/var/www/certbot
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+      - ssl-certs:/etc/ssl/acme
+      - ssl-lib:/var/lib/letsencrypt
+      - ssl-www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --config-dir /etc/ssl/acme; sleep 12h & wait $${!}; done;'"
 
   backend:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/autoresume-backend:latest
@@ -53,21 +53,21 @@ services:
         condition: service_healthy
 
 volumes:
-  certbot-etc:
+  ssl-certs:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/ec2-user/autoresume/certbot/conf
-  certbot-lib:
+      device: /home/ec2-user/autoresume/ssl/certs
+  ssl-lib:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/ec2-user/autoresume/certbot/lib
-  certbot-www:
+      device: /home/ec2-user/autoresume/ssl/lib
+  ssl-www:
     driver: local
     driver_opts:
       type: none
       o: bind
-      device: /home/ec2-user/autoresume/certbot/www
+      device: /home/ec2-user/autoresume/ssl/www
