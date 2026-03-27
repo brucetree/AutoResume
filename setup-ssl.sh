@@ -82,7 +82,9 @@ docker run --rm \
   $domain_args
 
 # Check if certificate was obtained successfully
-if [ ! -f "$data_path/certs/live/${domains[0]}/fullchain.pem" ]; then
+# Use docker to verify (archive dir is root-owned, not readable by ec2-user directly)
+if ! docker run --rm -v "$data_path/certs:/etc/ssl/acme" alpine \
+    test -f "/etc/ssl/acme/live/${domains[0]}/fullchain.pem"; then
   echo "### ERROR: Failed to obtain certificate. Restoring dummy certificate so nginx can start ..."
   mkdir -p "$data_path/certs/live/${domains[0]}"
   docker run --rm -v "$data_path/certs:/etc/ssl/acme" \
