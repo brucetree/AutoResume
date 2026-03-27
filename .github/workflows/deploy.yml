@@ -131,7 +131,7 @@ jobs:
         run: |
           scp -o StrictHostKeyChecking=no -i key.pem \
             docker-compose.prod.yml \
-            init-letsencrypt.sh \
+            setup-ssl.sh \
             ec2-user@$EC2_HOST:/home/ec2-user/autoresume/
           scp -o StrictHostKeyChecking=no -i key.pem -r \
             nginx/ \
@@ -140,12 +140,17 @@ jobs:
       - name: Deploy on EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
+          ZEROSSL_EAB_KID: ${{ secrets.ZEROSSL_EAB_KID }}
+          ZEROSSL_EAB_HMAC_KEY: ${{ secrets.ZEROSSL_EAB_HMAC_KEY }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST << 'DEPLOY_SCRIPT'
+          ssh -o StrictHostKeyChecking=no -i key.pem ec2-user@$EC2_HOST \
+            ZEROSSL_EAB_KID="$ZEROSSL_EAB_KID" \
+            ZEROSSL_EAB_HMAC_KEY="$ZEROSSL_EAB_HMAC_KEY" \
+            bash -s << 'DEPLOY_SCRIPT'
             cd /home/ec2-user/autoresume
 
-            # Create certbot directories if they don't exist
-            mkdir -p certbot/conf certbot/www certbot/lib
+            # Create SSL directories if they don't exist
+            mkdir -p ssl/certs ssl/www ssl/lib
 
             # Login to ECR
             aws ecr get-login-password --region ap-southeast-2 | docker login --username AWS --password-stdin 082499809818.dkr.ecr.ap-southeast-2.amazonaws.com
@@ -153,15 +158,15 @@ jobs:
             # Pull latest images
             docker-compose -f docker-compose.prod.yml pull backend frontend
 
-            # Only run SSL setup on first deploy (never automatically re-request)
-            # To manually renew: ssh into EC2 and run: bash init-letsencrypt.sh
-            if [ ! -d "certbot/conf/live" ]; then
+            # Only run SSL setup on first deploy (certs persist via bind-mount volumes)
+            # To manually re-issue: ZEROSSL_EAB_KID=<kid> ZEROSSL_EAB_HMAC_KEY=<hmac> bash setup-ssl.sh
+            if [ ! -d "ssl/certs/live" ]; then
               echo "First deploy: running SSL setup..."
-              chmod +x init-letsencrypt.sh
-              bash init-letsencrypt.sh
+              chmod +x setup-ssl.sh
+              bash setup-ssl.sh
             fi
 
-            # Restart services (preserve volumes, no down to keep certbot data)
+            # Restart services (--force-recreate preserves volumes)
             docker-compose -f docker-compose.prod.yml up -d --force-recreate
             docker image prune -f
           DEPLOY_SCRIPT
