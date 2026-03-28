@@ -80,6 +80,51 @@ router.post(
   }
 )
 
+// POST /api/auth/oauth-login — find or create OAuth user and return JWT
+router.post(
+  '/oauth-login',
+  [
+    body('email').isEmail().normalizeEmail(),
+    body('name').trim().notEmpty(),
+    body('provider').isIn(['google']),
+  ],
+  async (req, res) => {
+    const errors = validationResult(req)
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ message: 'Invalid input data', errors: errors.array() })
+    }
+
+    const { email, name, provider } = req.body
+
+    try {
+      // Find existing user or create new one
+      let user = await User.findOne({ email })
+
+      if (!user) {
+        user = await User.create({ name, email, provider })
+      } else if (user.provider === 'credentials') {
+        // Existing credentials user logging in via Google — link accounts
+        user.provider = provider
+        await user.save()
+      }
+
+      const token = jwt.sign(
+        { sub: user._id, email: user.email, name: user.name },
+        process.env.NEXTAUTH_SECRET,
+        { expiresIn: '7d' }
+      )
+
+      res.json({
+        user: { _id: user._id, name: user.name, email: user.email },
+        token,
+      })
+    } catch (err) {
+      console.error('OAuth login error:', err)
+      res.status(500).json({ message: 'Server error' })
+    }
+  }
+)
+
 // PATCH /api/auth/profile — update display name
 router.patch('/profile', authMiddleware, async (req, res) => {
   const { name } = req.body
