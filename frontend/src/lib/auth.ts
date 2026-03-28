@@ -46,11 +46,35 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
+    async jwt({ token, user, account }) {
+      // Credentials login: accessToken comes from Express /api/auth/login
+      if (user && account?.provider === 'credentials') {
         token.id = user.id
         token.accessToken = (user as any).accessToken
       }
+
+      // Google OAuth: call Express to find-or-create user and get JWT
+      if (account?.provider === 'google') {
+        try {
+          const res = await fetch(`${API_URL}/api/auth/oauth-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: token.email,
+              name: token.name,
+              provider: 'google',
+            }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            token.id = data.user._id
+            token.accessToken = data.token
+          }
+        } catch (err) {
+          console.error('OAuth login sync error:', err)
+        }
+      }
+
       return token
     },
     async session({ session, token }) {
