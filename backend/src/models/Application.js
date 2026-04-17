@@ -7,6 +7,8 @@ const applicationSchema = new mongoose.Schema({
   jobDescription: { type: String },
   jobUrl: { type: String },
   gapAnalysis: { type: String },          // AI gap analysis result
+  matchScore: { type: Number, default: null },      // 0-100, extracted from gapAnalysis
+  processingTime: { type: Number, default: null },  // AI analyze duration in ms
   resumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume' },
   modifiedResumeId: { type: mongoose.Schema.Types.ObjectId, ref: 'Resume' },
   status: {

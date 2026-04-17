@@ -11,6 +11,8 @@ interface Application {
   position: string
   status: string
   createdAt: string
+  matchScore?: number | null
+  processingTime?: number | null
 }
 
 interface Resume {
@@ -120,7 +122,17 @@ export default function DashboardPage() {
     return true
   })
 
-  const avgScore = applications.length > 0 ? 88.5 : 0
+  const scoredApps = applications.filter((a) => typeof a.matchScore === 'number')
+  const avgScore = scoredApps.length > 0
+    ? Math.round((scoredApps.reduce((sum, a) => sum + (a.matchScore as number), 0) / scoredApps.length) * 10) / 10
+    : 0
+
+  const timedApps = applications.filter((a) => typeof a.processingTime === 'number')
+  const avgProcessingMs = timedApps.length > 0
+    ? timedApps.reduce((sum, a) => sum + (a.processingTime as number), 0) / timedApps.length
+    : 0
+  const avgProcessingDisplay = avgProcessingMs > 0 ? `${(avgProcessingMs / 1000).toFixed(1)}s` : ''
+
   const totalScanned = applications.length
 
   if (loading) {
@@ -153,16 +165,25 @@ export default function DashboardPage() {
       {/* Mobile: horizontal scroll */}
       <section className="md:hidden -mx-6 px-6">
         <div className="flex gap-4 overflow-x-auto hide-scrollbar">
-          <div className="min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow">
+          <div className={`min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow ${avgScore > 0 ? '' : 'opacity-60'}`}>
             <p className="text-on-surface-variant text-[11px] font-medium mb-3">Avg. Match Score</p>
-            <p className="text-3xl font-extrabold font-headline text-on-tertiary-container">
-              {avgScore > 0 ? avgScore : '--'}
-              {avgScore > 0 && <span className="text-sm ml-0.5">%</span>}
-            </p>
-            {avgScore > 0 && (
-              <div className="mt-4 w-full bg-surface-container-high h-1 rounded-[9999px]">
-                <div className="bg-on-tertiary-container h-full rounded-[9999px]" style={{ width: `${avgScore}%` }} />
-              </div>
+            {avgScore > 0 ? (
+              <>
+                <p className="text-3xl font-extrabold font-headline text-on-tertiary-container">
+                  {avgScore}
+                  <span className="text-sm ml-0.5">%</span>
+                </p>
+                <div className="mt-4 w-full bg-surface-container-high h-1 rounded-[9999px]">
+                  <div className="bg-on-tertiary-container h-full rounded-[9999px]" style={{ width: `${avgScore}%` }} />
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-bold font-headline text-on-surface mt-1">Not yet</p>
+                <p className="text-[10px] text-on-surface-variant mt-2 font-medium leading-relaxed">
+                  Run your first analysis to unlock insights
+                </p>
+              </>
             )}
           </div>
           <div className="min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow">
@@ -173,15 +194,24 @@ export default function DashboardPage() {
               Active
             </p>
           </div>
-          <div className="min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow">
+          <div className={`min-w-[140px] flex-shrink-0 bg-surface-container-lowest p-5 rounded-xl editorial-shadow ${avgProcessingDisplay ? '' : 'opacity-60'}`}>
             <p className="text-on-surface-variant text-[11px] font-medium mb-3">AI Efficiency</p>
-            <p className="text-3xl font-extrabold font-headline">
-              1.4<span className="text-sm ml-0.5">s</span>
-            </p>
-            <p className="text-[10px] text-on-tertiary-container mt-2 font-medium flex items-center gap-1">
-              <span className="material-symbols-outlined text-[12px]">bolt</span>
-              Optimal
-            </p>
+            {avgProcessingDisplay ? (
+              <>
+                <p className="text-3xl font-extrabold font-headline">{avgProcessingDisplay}</p>
+                <p className="text-[10px] text-on-tertiary-container mt-2 font-medium flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[12px]">bolt</span>
+                  Optimal
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-bold font-headline text-on-surface mt-1">Not yet</p>
+                <p className="text-[10px] text-on-surface-variant mt-2 font-medium leading-relaxed">
+                  Processing time appears after your first analysis
+                </p>
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -202,34 +232,50 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="col-span-4 bg-primary text-on-primary p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group">
+        <div className={`col-span-4 bg-primary text-on-primary p-8 rounded-xl flex flex-col justify-between overflow-hidden relative group transition-opacity ${avgScore > 0 ? '' : 'opacity-60'}`}>
           <div className="z-10">
             <div className="flex justify-between items-start">
               <span className="text-on-primary/60 font-label text-xs uppercase tracking-widest">Avg. Match Score</span>
               <span className="material-symbols-outlined text-on-primary/40">verified</span>
             </div>
-            <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter">
-              {avgScore > 0 ? `${avgScore}%` : '--'}
-            </p>
+            {avgScore > 0 ? (
+              <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter">{avgScore}%</p>
+            ) : (
+              <div className="mt-6">
+                <p className="text-3xl font-headline font-extrabold tracking-tight">Not yet</p>
+                <p className="text-on-primary/70 text-sm mt-2 leading-relaxed max-w-[220px]">
+                  Run your first analysis to unlock insights
+                </p>
+              </div>
+            )}
           </div>
           <div className="z-10 flex items-center gap-2 text-tertiary-fixed text-xs font-semibold">
             <span className="material-symbols-outlined text-sm">auto_awesome</span>
-            <span>{avgScore > 0 ? 'High Precision Achieved' : 'Start analyzing'}</span>
+            <span>{avgScore > 0 ? 'High Precision Achieved' : 'Awaiting your first result'}</span>
           </div>
           <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-on-primary-container rounded-[9999px] blur-[60px] opacity-40 group-hover:opacity-60 transition-opacity" />
         </div>
 
-        <div className="col-span-4 bg-tertiary-fixed p-8 rounded-xl flex flex-col justify-between group transition-all">
+        <div className={`col-span-4 bg-tertiary-fixed p-8 rounded-xl flex flex-col justify-between group transition-opacity ${avgProcessingDisplay ? '' : 'opacity-60'}`}>
           <div>
             <div className="flex justify-between items-start">
               <span className="text-on-tertiary-fixed font-label text-xs uppercase tracking-widest">AI Efficiency</span>
               <span className="material-symbols-outlined text-on-tertiary-fixed/40">psychology</span>
             </div>
-            <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter text-on-tertiary-fixed">1.4s</p>
+            {avgProcessingDisplay ? (
+              <p className="text-5xl font-headline font-extrabold mt-6 tracking-tighter text-on-tertiary-fixed">{avgProcessingDisplay}</p>
+            ) : (
+              <div className="mt-6">
+                <p className="text-3xl font-headline font-extrabold tracking-tight text-on-tertiary-fixed">Not yet</p>
+                <p className="text-on-tertiary-fixed/80 text-sm mt-2 leading-relaxed max-w-[220px]">
+                  Processing time appears after your first analysis
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2 text-on-tertiary-fixed text-xs font-semibold">
             <span className="material-symbols-outlined text-sm">speed</span>
-            <span>Average Processing Time</span>
+            <span>{avgProcessingDisplay ? 'Average Processing Time' : 'Awaiting your first result'}</span>
           </div>
         </div>
       </section>

@@ -67,7 +67,20 @@ router.post('/analyze', async (req, res) => {
       jobText = await fetchJobDescription(jobUrl)
     }
 
+    const analyzeStart = Date.now()
     const { gapAnalysis, modifiedResume } = await analyzeAndModify(resume.parsedText, jobText)
+    const processingTime = Date.now() - analyzeStart
+
+    // Extract matchScore from gapAnalysis JSON (0-100)
+    let matchScore = null
+    try {
+      const parsed = JSON.parse(gapAnalysis)
+      if (typeof parsed.matchScore === 'number' && parsed.matchScore >= 0 && parsed.matchScore <= 100) {
+        matchScore = parsed.matchScore
+      }
+    } catch {
+      // gapAnalysis was not valid JSON — leave matchScore null
+    }
 
     // Save modified resume as new version
     const modifiedResumeDoc = await Resume.create({
@@ -88,6 +101,8 @@ router.post('/analyze', async (req, res) => {
       jobDescription: jobText,
       jobUrl: jobUrl || null,
       gapAnalysis,
+      matchScore,
+      processingTime,
       resumeId,
       modifiedResumeId: modifiedResumeDoc._id,
     })
