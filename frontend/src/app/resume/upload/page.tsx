@@ -1,17 +1,43 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useRef, useState, useCallback } from 'react'
-import { apiUpload, apiPost } from '@/lib/api'
+import { useRef, useState, useCallback, useEffect } from 'react'
+import { apiGet, apiUpload, apiPost } from '@/lib/api'
 import AppShell from '@/components/layout/AppShell'
 
 interface AnalyzeResult {
   application: { _id: string }
 }
 
+interface ResumeListItem {
+  _id: string
+  originalFileName: string
+  fileType: 'pdf' | 'docx'
+  isPrimary: boolean
+  updatedAt: string
+}
+
+function timeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const minutes = Math.floor(diff / (1000 * 60))
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  if (days === 1) return '1 day ago'
+  if (days < 7) return `${days} days ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks === 1) return '1 week ago'
+  if (weeks < 4) return `${weeks} weeks ago`
+  const months = Math.floor(days / 30)
+  return `${months} month${months === 1 ? '' : 's'} ago`
+}
+
 export default function AnalysisSetupPage() {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [company, setCompany] = useState('')
@@ -22,6 +48,28 @@ export default function AnalysisSetupPage() {
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [isFetching, setIsFetching] = useState(false)
+  const [existingResumes, setExistingResumes] = useState<ResumeListItem[]>([])
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+
+  useEffect(() => {
+    apiGet<{ resumes: ResumeListItem[] }>('/api/resumes')
+      .then((data) => setExistingResumes(data.resumes))
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (!isDropdownOpen) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isDropdownOpen])
+
+  const selectedResume = existingResumes.find((r) => r._id === selectedResumeId) || null
 
   async function handleFetchUrl() {
     if (!jobUrl) {
@@ -49,7 +97,10 @@ export default function AnalysisSetupPage() {
     e.preventDefault()
     setIsDragging(false)
     const droppedFile = e.dataTransfer.files[0]
-    if (droppedFile) setFile(droppedFile)
+    if (droppedFile) {
+      setFile(droppedFile)
+      setSelectedResumeId(null)
+    }
   }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -63,8 +114,8 @@ export default function AnalysisSetupPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!file) {
-      setError('Please upload your resume')
+    if (!file && !selectedResumeId) {
+      setError('Please select an existing resume or upload a new one')
       return
     }
     if (!position && !jobDescription && !jobUrl) {
@@ -75,12 +126,18 @@ export default function AnalysisSetupPage() {
     setStep('analyzing')
 
     try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const { resume } = await apiUpload<{ resume: { _id: string } }>('/api/resumes', formData)
+      let resumeId: string
+      if (selectedResumeId) {
+        resumeId = selectedResumeId
+      } else {
+        const formData = new FormData()
+        formData.append('file', file as File)
+        const { resume } = await apiUpload<{ resume: { _id: string } }>('/api/resumes', formData)
+        resumeId = resume._id
+      }
 
       const body: Record<string, string> = {
-        resumeId: resume._id,
+        resumeId,
         company,
         position,
       }
@@ -155,6 +212,136 @@ export default function AnalysisSetupPage() {
               <h3 className="font-headline text-lg md:text-xl font-bold tracking-tight">Professional Source</h3>
             </div>
 
+            {/* Existing resumes dropdown */}
+            {existingResumes.length > 0 && (
+              <div className="mb-6 space-y-4">
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">
+                  Select from existing resumes
+                </label>
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen((v) => !v)}
+                    className={`w-full flex items-center justify-between bg-surface-container-lowest border rounded-xl px-4 md:px-5 py-3.5 md:py-4 transition-all shadow-sm ${
+                      isDropdownOpen || selectedResume
+                        ? 'border-surface-tint'
+                        : 'border-outline-variant/30 hover:border-surface-tint/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                      <span className="material-symbols-outlined text-surface-tint flex-shrink-0">
+                        {selectedResume
+                          ? selectedResume.fileType === 'pdf'
+                            ? 'picture_as_pdf'
+                            : 'article'
+                          : 'description'}
+                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`text-sm font-medium truncate ${
+                            selectedResume ? 'text-on-surface font-bold' : 'text-on-surface'
+                          }`}
+                        >
+                          {selectedResume
+                            ? selectedResume.originalFileName
+                            : 'Choose a previously analyzed resume...'}
+                        </span>
+                        {selectedResume?.isPrimary && (
+                          <span className="bg-primary text-on-primary text-[9px] font-black px-2 py-0.5 rounded tracking-tighter flex-shrink-0">
+                            PRIMARY
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span
+                      className={`material-symbols-outlined text-surface-tint transition-transform flex-shrink-0 ml-2 ${
+                        isDropdownOpen ? 'rotate-180' : ''
+                      }`}
+                    >
+                      expand_more
+                    </span>
+                  </button>
+
+                  {isDropdownOpen && (
+                    <div className="absolute top-full left-0 w-full mt-2 bg-surface-container-lowest rounded-xl shadow-2xl shadow-on-surface/10 border border-outline-variant/15 overflow-hidden z-50">
+                      <div className="max-h-80 overflow-y-auto">
+                        {existingResumes.map((resume) => {
+                          const isSelected = resume._id === selectedResumeId
+                          return (
+                            <button
+                              key={resume._id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedResumeId(resume._id)
+                                setFile(null)
+                                setIsDropdownOpen(false)
+                              }}
+                              className={`w-full px-5 md:px-6 py-4 flex items-center justify-between cursor-pointer border-l-4 transition-colors text-left ${
+                                isSelected
+                                  ? 'bg-surface-container-low border-primary'
+                                  : 'border-transparent hover:bg-surface-container-low'
+                              }`}
+                            >
+                              <div className="flex items-center gap-4 min-w-0">
+                                <span
+                                  className={`material-symbols-outlined flex-shrink-0 ${
+                                    isSelected ? 'text-primary' : 'text-on-secondary-container'
+                                  }`}
+                                >
+                                  {resume.fileType === 'pdf' ? 'picture_as_pdf' : 'article'}
+                                </span>
+                                <div className="min-w-0">
+                                  <p
+                                    className={`text-sm truncate ${
+                                      isSelected
+                                        ? 'text-on-surface font-bold'
+                                        : 'text-on-surface-variant font-medium'
+                                    }`}
+                                  >
+                                    {resume.originalFileName}
+                                  </p>
+                                  <p className="text-[10px] text-outline uppercase tracking-wider font-medium mt-0.5">
+                                    Modified {timeAgo(resume.updatedAt)}
+                                  </p>
+                                </div>
+                              </div>
+                              {resume.isPrimary && (
+                                <span className="bg-primary text-on-primary text-[9px] font-black px-2 py-0.5 rounded tracking-tighter flex-shrink-0 ml-2">
+                                  PRIMARY
+                                </span>
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <div className="bg-surface-container p-3 border-t border-outline-variant/10">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsDropdownOpen(false)
+                            fileRef.current?.click()
+                          }}
+                          className="w-full py-2 flex items-center justify-center gap-2 text-primary font-bold text-xs hover:bg-surface-container-high rounded-lg transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-sm">add_circle</span>
+                          Upload New Version
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* OR UPLOAD NEW divider */}
+                <div className="flex items-center gap-4 pt-2">
+                  <div className="h-px bg-outline-variant/20 flex-1" />
+                  <span className="text-[10px] font-bold text-outline uppercase tracking-widest">
+                    OR UPLOAD NEW
+                  </span>
+                  <div className="h-px bg-outline-variant/20 flex-1" />
+                </div>
+              </div>
+            )}
+
             <div
               className={`relative w-full h-48 md:h-64 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all duration-300 cursor-pointer overflow-hidden ${
                 isDragging
@@ -210,7 +397,11 @@ export default function AnalysisSetupPage() {
                 type="file"
                 accept=".pdf,.doc,.docx,.rtf"
                 className="absolute inset-0 opacity-0 cursor-pointer"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null
+                  setFile(f)
+                  if (f) setSelectedResumeId(null)
+                }}
               />
             </div>
           </div>
@@ -354,6 +545,30 @@ export default function AnalysisSetupPage() {
                   </div>
                 )}
 
+                {/* Selected existing resume info */}
+                {!file && selectedResume && (
+                  <div className="flex items-start gap-4 p-4 bg-surface-container-low rounded-lg">
+                    <div className="w-10 h-12 bg-white flex items-center justify-center rounded shadow-inner border border-outline-variant/5">
+                      <span className="material-symbols-outlined text-primary">
+                        {selectedResume.fileType === 'pdf' ? 'picture_as_pdf' : 'article'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold truncate max-w-[180px]">
+                        {selectedResume.originalFileName}
+                      </p>
+                      <p className="text-[10px] text-on-surface-variant mt-1">
+                        From library • Modified {timeAgo(selectedResume.updatedAt)}
+                      </p>
+                    </div>
+                    {selectedResume.isPrimary && (
+                      <span className="ml-auto bg-primary text-on-primary text-[9px] font-black px-2 py-0.5 rounded tracking-tighter self-start">
+                        PRIMARY
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Parsed job info */}
                 {(position || company) && (
                   <div className="space-y-4">
@@ -373,7 +588,7 @@ export default function AnalysisSetupPage() {
                 )}
 
                 {/* Empty state */}
-                {!file && !position && !company && (
+                {!file && !selectedResume && !position && !company && (
                   <div className="py-8 text-center">
                     <span className="material-symbols-outlined text-4xl text-outline-variant/50 mb-3">
                       preview

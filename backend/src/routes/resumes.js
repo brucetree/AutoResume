@@ -23,7 +23,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 
     // Check if user has any resumes — first one becomes primary
     const userId = req.user.sub || req.user.id
-    const existingCount = await Resume.countDocuments({ userId })
+    const existingCount = await Resume.countDocuments({ userId, version: 1 })
 
     const resume = await Resume.create({
       userId,
@@ -45,7 +45,7 @@ router.post('/', upload.single('file'), async (req, res) => {
 // GET /api/resumes — list user's resumes
 router.get('/', async (req, res) => {
   try {
-    const resumes = await Resume.find({ userId: req.user.sub || req.user.id })
+    const resumes = await Resume.find({ userId: req.user.sub || req.user.id, version: 1 })
       .sort({ isPrimary: -1, createdAt: -1 })
       .select('-parsedText')
     res.json({ resumes })
