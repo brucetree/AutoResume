@@ -125,6 +125,20 @@ jobs:
           echo "$EC2_SSH_KEY" > key.pem
           chmod 600 key.pem
 
+      - name: Whitelist runner IP for SSH
+        env:
+          SG_ID: ${{ secrets.EC2_SG_ID }}
+        run: |
+          RUNNER_IP=$(curl -sS https://api.ipify.org)
+          echo "Runner public IP: $RUNNER_IP"
+          echo "RUNNER_IP=$RUNNER_IP" >> "$GITHUB_ENV"
+          aws ec2 authorize-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp --port 22 \
+            --cidr "${RUNNER_IP}/32" \
+            >/dev/null
+          echo "Authorized ${RUNNER_IP}/32 on $SG_ID:22"
+
       - name: Copy files to EC2
         env:
           EC2_HOST: ${{ secrets.EC2_HOST }}
@@ -183,3 +197,16 @@ jobs:
           curl -f -k https://autoresume.org/health || (echo "Backend health check failed" && exit 1)
           curl -f -k https://autoresume.org || (echo "Frontend health check failed" && exit 1)
           echo "Deployment verified successfully"
+
+      - name: Revoke runner IP SSH access
+        if: always() && env.RUNNER_IP != ''
+        env:
+          SG_ID: ${{ secrets.EC2_SG_ID }}
+        run: |
+          aws ec2 revoke-security-group-ingress \
+            --group-id "$SG_ID" \
+            --protocol tcp --port 22 \
+            --cidr "${RUNNER_IP}/32" \
+            >/dev/null \
+            && echo "Revoked ${RUNNER_IP}/32 from $SG_ID:22" \
+            || echo "Revoke failed (rule may already be gone); not blocking"
