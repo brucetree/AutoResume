@@ -3,6 +3,7 @@ services:
     image: nginx:alpine
     container_name: autoresume-nginx
     restart: unless-stopped
+    mem_limit: 100m
     ports:
       - "80:80"
       - "443:443"
@@ -18,6 +19,7 @@ services:
     image: certbot/certbot
     container_name: autoresume-certbot
     restart: unless-stopped
+    mem_limit: 100m
     volumes:
       - ssl-certs:/etc/ssl/acme
       - ssl-lib:/var/lib/letsencrypt
@@ -28,6 +30,7 @@ services:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/autoresume-backend:latest
     container_name: autoresume-backend
     restart: unless-stopped
+    mem_limit: 300m
     expose:
       - "5001"
     env_file:
@@ -42,6 +45,7 @@ services:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/autoresume-frontend:latest
     container_name: autoresume-frontend
     restart: unless-stopped
+    mem_limit: 300m
     expose:
       - "3000"
     env_file:
