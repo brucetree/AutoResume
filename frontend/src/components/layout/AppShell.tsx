@@ -2,7 +2,6 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 import Sidebar from './Sidebar'
 import TopNav from './TopNav'
 import BottomNav from './BottomNav'
@@ -12,12 +11,17 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const { status } = useSession()
   const router = useRouter()
-
-  useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login')
-  }, [status, router])
+  // `required: true` defers the redirect decision until NextAuth confirms the
+  // session state, avoiding a transient 'unauthenticated' flash right after
+  // the Google OAuth callback (which was causing first-login → bounce to
+  // /login → user has to click Google a second time).
+  const { status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.push('/login')
+    },
+  })
 
   if (status === 'loading') {
     return (
@@ -26,8 +30,6 @@ export default function AppShell({ children }: AppShellProps) {
       </div>
     )
   }
-
-  if (status === 'unauthenticated') return null
 
   return (
     <div className="bg-surface min-h-screen font-body text-on-surface antialiased">
