@@ -88,4 +88,40 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
   },
+  // Explicit cookie config overrides NextAuth's automatic __Host-/__Secure-
+  // prefix names. Background: in production (HTTPS) NextAuth defaults to
+  // __Host-next-auth.* and __Secure-next-auth.* names. These prefixes carry
+  // extra browser-side validation, and we have been observing that the
+  // pkce.code_verifier + state cookies set during /api/auth/signin/google
+  // were not being sent back on the cross-site Google → callback redirect,
+  // producing "[OAUTH_CALLBACK_ERROR] State cookie was missing." on the
+  // first attempt for every user. Localhost (no prefix names) was unaffected.
+  // Dropping the prefixes and keeping Secure + SameSite=Lax matches the
+  // behaviour that works on localhost while still requiring HTTPS transport.
+  cookies: {
+    sessionToken: {
+      name: 'next-auth.session-token',
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
+    },
+    callbackUrl: {
+      name: 'next-auth.callback-url',
+      options: { sameSite: 'lax', path: '/', secure: true },
+    },
+    csrfToken: {
+      name: 'next-auth.csrf-token',
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
+    },
+    pkceCodeVerifier: {
+      name: 'next-auth.pkce.code_verifier',
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 60 * 15 },
+    },
+    state: {
+      name: 'next-auth.state',
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true, maxAge: 60 * 15 },
+    },
+    nonce: {
+      name: 'next-auth.nonce',
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: true },
+    },
+  },
 }
