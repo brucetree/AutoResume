@@ -4,6 +4,11 @@ services:
     container_name: autoresume-nginx
     restart: unless-stopped
     mem_limit: 100m
+    # Reload nginx every 6h so certs renewed by the certbot container get
+    # picked up without a redeploy. nginx only reads cert files at startup /
+    # reload; without this loop a renewed cert sits unused on disk and the
+    # in-memory one expires (caused the Jun 25 → Jul 9 2026 outage).
+    command: "/bin/sh -c 'while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g \"daemon off;\"'"
     ports:
       - "80:80"
       - "443:443"
